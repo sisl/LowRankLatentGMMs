@@ -108,7 +108,7 @@ def visualize_model(model, base, title):
     torch.manual_seed(42)
     #sample = sample_8gaussians(1024)
     sample = base.sample((1024,))
-    ts = torch.linspace(0, 1, 50)
+    ts = torch.linspace(0, 1, 101)
 
     nde = NeuralODE(DEFunc(torch_wrapper(model)), solver="euler").to(device)
     # with torch.no_grad():
@@ -153,8 +153,8 @@ def visualize_model(model, base, title):
             out[:, :, 1],
             np.sqrt(np.sum(out**2, axis=-1)),
             cmap="coolwarm",
-            scale=50.0,
-            width=0.015,
+            scale=15.0,
+            width=0.01,
             pivot="mid",
         )
 
