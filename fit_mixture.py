@@ -66,8 +66,8 @@ def main(argv):
     print(type(train_set))
 
     print('EM fitting: {} components / {} factors / batch size {} ...'.format(n_components, n_factors, batch_size))
-    ll_log = model.batch_fit(train_set, test_set, batch_size=batch_size, max_iterations=num_iterations,
-                             feature_sampling=feature_sampling)
+    #ll_log = model.batch_fit(train_set, test_set, batch_size=batch_size, max_iterations=num_iterations,
+    #                         feature_sampling=feature_sampling)
     
     # Iterate over the dataset and collect images and labels
     images = []
@@ -80,7 +80,7 @@ def main(argv):
     # Stack images and labels into tensor format
     images_tensor = torch.stack(images)
 
-    #ll_log = model.fit(images_tensor, max_iterations=10, feature_sampling=feature_sampling)
+    ll_log = model.fit(images_tensor, max_iterations=10, feature_sampling=feature_sampling)
 
     if mfa_sgd_epochs > 0:
         print('Continuing training using SGD with diagonal (instead of isotropic) noise covariance...')
@@ -111,7 +111,3 @@ def main(argv):
 
 if __name__ == "__main__":
     main(sys.argv)
-
-
-
-# %%
