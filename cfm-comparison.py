@@ -72,7 +72,7 @@ def my_plot_trajectories(traj):
     plt.show()
 
 
-def compute_avg_log_prob(model, x, device):
+def compute_avg_log_prob(model, x, device, base):
     # Density plot
     cnf = DEFunc(CNF(model))
     nde = NeuralODE(cnf, solver="euler", sensitivity="adjoint")
@@ -241,7 +241,7 @@ def train_fm_model(model, FM, base, optimizer, batch_size, n_iters, note):
             start = end
         
             x1 = torch.tensor(generate_data("pinwheel", batch_size=1024), dtype=torch.float32)
-            avg_lp = compute_avg_log_prob(model, x1, 'cpu')
+            avg_lp = compute_avg_log_prob(model, x1, 'cpu', base)
             node = NeuralODE(
                 torch_wrapper(model), solver="dopri5", sensitivity="adjoint", atol=1e-4, rtol=1e-4
             )

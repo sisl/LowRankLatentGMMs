@@ -1,15 +1,15 @@
 name: LowRankLatentGMMs
 channels:
-  - defaults
+  - conda-forge
+  - pytorch
 dependencies:
   - python=3.11
+  - cudatoolkit
   - matplotlib
   - numpy
-  - pandas
   - pip
   - pytorch
   - torchvision
-  - torchdiffeq
   - scikit-learn
   - pip:
-    - nflows
+    - torchcfm
