@@ -38,15 +38,16 @@ def main(argv):
         test_set = CelebA(root='./data', split='test', transform=trans, download=True)
     elif dataset == 'cifar10':
         image_shape = [32, 32, 3]       # The input image shape
-        n_components = 300              # Number of components in the mixture model
+        n_components = 100              # Number of components in the mixture model
         n_factors = 10                  # Number of factors - the latent dimension (same for all components)
         batch_size = 1000               # The EM batch size
-        num_iterations = 10              # Number of EM iterations (=epochs)
+        num_iterations = 100             # Number of EM iterations (=epochs)
         feature_sampling = 0.2          # For faster responsibilities calculation, randomly sample the coordinates (or False)
         mfa_sgd_epochs = 0              # Perform additional training with diagonal (per-pixel) covariance, using SGD
-        init_method = 'rnd_samples'     # Initialize each component from few random samples using PPCA
+        init_method = 'kmeans'     # Initialize each component from few random samples using PPCA
         trans = transforms.Compose(
             [
+                transforms.Resize(image_shape[0]),
                 transforms.RandomHorizontalFlip(),
                 transforms.ToTensor(),
                 transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
@@ -85,6 +86,7 @@ def main(argv):
     
     print(type(train_set))
 
+    '''
     print('EM fitting: {} components / {} factors / batch size {} ...'.format(n_components, n_factors, batch_size))
     start = time.time()
     ll_log = model.batch_fit(train_set, test_set, batch_size=batch_size, max_iterations=num_iterations,
@@ -93,21 +95,22 @@ def main(argv):
     print("time {:0.2f}".format(end-start))  
     
     # Iterate over the dataset and collect images and labels
-    #images = []
-    #labels = []
+    '''
+    images = []
+    labels = []
 
-    #for img, label in train_set:
-    #    images.append(img)
-    #    labels.append(label)
+    for img, label in train_set:
+        images.append(img)
+        labels.append(label)
 
     # Stack images and labels into tensor format
-    #images_tensor = torch.stack(images)
+    images_tensor = torch.stack(images)
 
-    #start = time.time()
-    #ll_log = model.fit(images_tensor, max_iterations=num_iterations, feature_sampling=feature_sampling)
-    #end = time.time()
-    #print("time {:0.2f}".format(end-start))
-
+    start = time.time()
+    ll_log = model.fit(images_tensor, max_iterations=num_iterations, feature_sampling=feature_sampling)
+    end = time.time()
+    print("time {:0.2f}".format(end-start))
+    
     if mfa_sgd_epochs > 0:
         print('Continuing training using SGD with diagonal (instead of isotropic) noise covariance...')
         model.isotropic_noise = False
@@ -118,6 +121,7 @@ def main(argv):
     print('Saving the model...')
     torch.save(model.state_dict(), os.path.join(model_dir, 'model_'+model_name+'.pth'))
 
+    model.to('cpu')
     print('Visualizing the trained model...')
     model_image = visualize_model(model, image_shape=image_shape, end_component=10)
     image = Image.fromarray((255 * model_image).astype(np.uint8))
