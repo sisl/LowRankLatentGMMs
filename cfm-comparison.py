@@ -1,39 +1,41 @@
-#%%
-import math
-import os
-import time
-
 import matplotlib.pyplot as plt
 import numpy as np
+import os
+import time
 import torch
-from torchdyn.core import NeuralODE
+from torch.distributions import Categorical, MixtureSameFamily, MultivariateNormal
 
-from torchcfm.conditional_flow_matching import *
-from torchcfm.models.models import *
-from torchcfm.utils import *
-
-from toy_data import generate_data
-
-from torch.distributions import (
-    Categorical, MixtureSameFamily, MultivariateNormal
-)
-
-pastelBlue = "#0072B2"
-pastelRed = "#F5615C"
-
+# torchdyn imports
 from torchdyn.core import DEFunc, NeuralODE
 from torchdyn.nn import Augmenter
 
+# torchcfm imports
+from torchcfm.conditional_flow_matching import ExactOptimalTransportConditionalFlowMatcher
+from torchcfm.models.models import MLP
+
+from toy_data import generate_data
+
+# color-blind friendly palette
+pastelBlue = "#0072B2"
+pastelRed = "#F5615C"
+
+
 def autograd_trace(x_out, x_in, **kwargs):
-    """Standard brute-force means of obtaining trace of the Jacobian, O(d) calls to autograd"""
+    """
+    Standard brute-force means of obtaining trace of the Jacobian, O(d) calls to autograd.
+    Code from torchcfm library: https://github.com/atong01/conditional-flow-matching
+    """
     trJ = 0.0
     for i in range(x_in.shape[1]):
-        trJ += torch.autograd.grad(x_out[:, i].sum(), x_in, allow_unused=False, create_graph=True)[
-            0
-        ][:, i]
+        trJ += torch.autograd.grad(x_out[:, i].sum(), x_in, allow_unused=False, create_graph=True)[0][:, i]
     return trJ
 
+
 class CNF(torch.nn.Module):
+    """
+    Continuous normalizing flow class. Code from torchcfm library: 
+    https://github.com/atong01/conditional-flow-matching
+    """
     def __init__(self, net, trace_estimator=None, noise_dist=None):
         super().__init__()
         self.net = net
@@ -42,18 +44,12 @@ class CNF(torch.nn.Module):
 
     def forward(self, t, x, *args, **kwargs):
         with torch.set_grad_enabled(True):
-            x_in = x[:, 1:].requires_grad_(
-                True
-            )  # first dimension reserved to divergence propagation
-            # the neural network will handle the data-dynamics here
-            x_out = self.net(
-                torch.cat([x_in, t * torch.ones(x.shape[0], 1).type_as(x_in)], dim=-1)
-            )
+            x_in = x[:, 1:].requires_grad_(True)  # first dimension reserved to divergence propagation
+            x_out = self.net(torch.cat([x_in, t * torch.ones(x.shape[0], 1).type_as(x_in)], dim=-1))
             trJ = self.trace_estimator(x_out, x_in, noise=self.noise)
         return (
             torch.cat([-trJ[:, None], x_out], 1) + 0 * x
         )  # `+ 0*x` has the only purpose of connecting x[:, 0] to autograd graph
-    
 
 
 def my_plot_trajectories(traj):

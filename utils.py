@@ -1,10 +1,9 @@
+import glob
 import matplotlib as mpl
 import numpy as np
-import torch
 import os
-import glob
 from PIL import Image
-from models import LowRankMixtureModel
+import torch
 
 
 class ReshapeTransform:
@@ -90,20 +89,8 @@ def make_gif(frame_folder, out_path, delete_frames=True):
     
     frame_one = frames[0]
     frame_one.save(out_path, format="GIF", append_images=frames,
-               save_all=True, duration=250, loop=0)
+               save_all=True, duration=100, loop=0)
 
     if delete_frames:
         for f in files:
             os.remove(f)
-
-
-# color a base distribution
-def color_base_dist(U, std=1.0):
-    S = np.sqrt(U[:,0]**2 + U[:,1]**2)/std
-    S = torch.clamp(S,0,1)
-    H = (np.arctan2(U[:,0], U[:,1]) + np.pi) / (np.pi*2)
-
-    hsv = np.stack((H,S,np.ones(H.shape)), axis=-1)
-    colors = mpl.colors.hsv_to_rgb(hsv)
-
-    return colors

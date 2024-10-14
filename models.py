@@ -315,6 +315,13 @@ class LowRankMixtureModel(torch.nn.Module):
 
             return mui_new, Wi_new, torch.log(sigma_2_new) * torch.ones_like(self.log_Psi[i])
 
+        def clip_pi(pi, min_weight=1e-4):
+            # Ensure no weight is below the minimum
+            clipped_pi = torch.clamp(pi, min=min_weight)
+            # Renormalize the weights to sum to 1
+            normalized_pi = clipped_pi / clipped_pi.sum(dim=-1, keepdim=True)
+            return normalized_pi
+        
         lls = []
         for it in range(max_iterations):
             t = time.time()
@@ -325,7 +332,12 @@ class LowRankMixtureModel(torch.nn.Module):
             self.mu.data = new_params[0]
             self.W.data = new_params[1]
             self.log_Psi.data = new_params[2]
-            self.pi_logits.data = torch.log(r_sum / torch.sum(r_sum))
+
+            pi = r_sum / torch.sum(r_sum)
+            normalized_pi = clip_pi(pi)
+
+            #self.pi_logits.data = torch.log(r_sum / torch.sum(r_sum))
+            self.pi_logits.data = torch.log(normalized_pi)
             ll = torch.mean(self.per_sample_log_likelihood(x)).item()
             print('Iteration {}/{}, train log-likelihood = {:.4f}, took {:.4f} sec'.format(
                 it, max_iterations, ll, time.time()-t))
@@ -379,6 +391,14 @@ class LowRankMixtureModel(torch.nn.Module):
 
         lls = []
         loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=8)
+
+        def clip_pi(pi, min_weight=1e-4):
+            # Ensure no weight is below the minimum
+            clipped_pi = torch.clamp(pi, min=min_weight)
+            # Renormalize the weights to sum to 1
+            normalized_pi = clipped_pi / clipped_pi.sum(dim=-1, keepdim=True)
+            return normalized_pi
+        
         for it in range(max_iterations):
             t = time.time()
 
@@ -404,7 +424,12 @@ class LowRankMixtureModel(torch.nn.Module):
                     sum_r_x_x_W[i] += (batch_r_x.T @ (batch_x @ self.W[i])).double()
 
             print(' / M...', end='', flush=True)
-            self.pi_logits.data = torch.log(sum_r / torch.sum(sum_r)).float()
+            
+            #self.pi_logits.data = torch.log(sum_r / torch.sum(sum_r)).float()
+            pi = sum_r / torch.sum(sum_r)
+            normalized_pi = clip_pi(pi)
+            self.pi_logits.data = torch.log(normalized_pi).float()
+
             self.mu.data = (sum_r_x / sum_r.reshape(-1, 1)).float()
             SW = sum_r_x_x_W / sum_r.reshape(-1, 1, 1) - \
                  (self.mu.reshape(K, d, 1) @ (self.mu.reshape(K, 1, d) @ self.W)).double()

@@ -1,4 +1,4 @@
-#%%
+import argparse
 import sys, os
 import torch
 from torchvision.datasets import CelebA, MNIST, CIFAR10
@@ -17,13 +17,21 @@ Note that actual EM (and SGD) training code are part of the MFA class itself.
 """
 
 
-def main(argv):
+def main():
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--dataset', type=str, default='mnist',
+                        choices=['mnist', 'celeba', 'cifar10'])
+    parser.add_argument('--fit_method', type=str, default='batch_em',
+                        choices=['batch_em', 'em'])
+    args = parser.parse_args()
+
 
     #dataset = argv[1] if len(argv) == 2 else 'celeba'
-    dataset = 'cifar10'
-    print('Preparing dataset and parameters for', dataset, '...')
+    #dataset = 'cifar10'
+    print('Preparing dataset and parameters for', args.dataset, '...')
 
-    if dataset == 'celeba':
+    if args.dataset == 'celeba':
         image_shape = [64, 64, 3]       # The input image shape
         n_components = 300              # Number of components in the mixture model
         n_factors = 10                  # Number of factors - the latent dimension (same for all components)
@@ -36,32 +44,32 @@ def main(argv):
                                     transforms.ToTensor(),  ReshapeTransform([-1])])
         train_set = CelebA(root='./data', split='train', transform=trans, download=True)
         test_set = CelebA(root='./data', split='test', transform=trans, download=True)
-    elif dataset == 'cifar10':
+    elif args.dataset == 'cifar10':
         image_shape = [32, 32, 3]       # The input image shape
-        n_components = 100              # Number of components in the mixture model
+        n_components = 300              # Number of components in the mixture model
         n_factors = 10                  # Number of factors - the latent dimension (same for all components)
-        batch_size = 1000               # The EM batch size
-        num_iterations = 100             # Number of EM iterations (=epochs)
+        batch_size = 2000               # The EM batch size
+        num_iterations = 20             # Number of EM iterations (=epochs)
         feature_sampling = 0.2          # For faster responsibilities calculation, randomly sample the coordinates (or False)
         mfa_sgd_epochs = 0              # Perform additional training with diagonal (per-pixel) covariance, using SGD
-        init_method = 'kmeans'     # Initialize each component from few random samples using PPCA
+        init_method = 'rnd_samples'     # Initialize each component from few random samples using PPCA
         trans = transforms.Compose(
             [
                 transforms.Resize(image_shape[0]),
-                transforms.RandomHorizontalFlip(),
+                #transforms.RandomHorizontalFlip(),
                 transforms.ToTensor(),
-                transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
+                #transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
                 ReshapeTransform([-1])
             ]
         )
         train_set = CIFAR10(root='./data', train=True, transform=trans, download=True)
         test_set = CIFAR10(root='./data', train=False, transform=trans, download=True)
-    elif dataset == 'mnist':
+    elif args.dataset == 'mnist':
         image_shape = [28, 28]          # The input image shape
         n_components = 50               # Number of components in the mixture model
         n_factors = 6                   # Number of factors - the latent dimension (same for all components)
         batch_size = 1000               # The EM batch size
-        num_iterations = 10             # Number of EM iterations (=epochs)
+        num_iterations = 20             # Number of EM iterations (=epochs)
         feature_sampling = False       # For faster responsibilities calculation, randomly sample the coordinates (or False)
         mfa_sgd_epochs = 0              # Perform additional training with diagonal (per-pixel) covariance, using SGD
         init_method = 'kmeans'         # Initialize by using k-means clustering
@@ -69,14 +77,14 @@ def main(argv):
         train_set = MNIST(root='./data', train=True, transform=trans, download=True)
         test_set = MNIST(root='./data', train=False, transform=trans, download=True)
     else:
-        assert False, 'Unknown dataset: ' + dataset
+        assert False, 'Unknown dataset: ' + args.dataset
 
     device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
     #device = 'cpu'
 
-    model_dir = './models/'+dataset
+    model_dir = './models/'+args.dataset
     os.makedirs(model_dir, exist_ok=True)
-    figures_dir = './figures/'+dataset
+    figures_dir = './figures/'+args.dataset
     os.makedirs(figures_dir, exist_ok=True)
     model_name = 'c_{}_l_{}_init_{}'.format(n_components, n_factors, init_method)
 
@@ -84,33 +92,32 @@ def main(argv):
     model = LowRankMixtureModel(n_components=n_components, n_features=np.prod(image_shape), n_factors=n_factors,
                 init_method=init_method).to(device=device)
     
-    print(type(train_set))
-
-    '''
     print('EM fitting: {} components / {} factors / batch size {} ...'.format(n_components, n_factors, batch_size))
-    start = time.time()
-    ll_log = model.batch_fit(train_set, test_set, batch_size=batch_size, max_iterations=num_iterations,
-                             feature_sampling=feature_sampling)
-    end = time.time()
-    print("time {:0.2f}".format(end-start))  
-    
-    # Iterate over the dataset and collect images and labels
-    '''
-    images = []
-    labels = []
 
-    for img, label in train_set:
-        images.append(img)
-        labels.append(label)
+    if args.fit_method == "batch_em":
+        start = time.time()
+        ll_log = model.batch_fit(train_set, test_set, batch_size=batch_size, max_iterations=num_iterations,
+                                feature_sampling=feature_sampling)
+        end = time.time()
+        print("time {:0.2f}".format(end-start))  
+    elif args.fit_method == "em":
+        images = []
+        labels = []
 
-    # Stack images and labels into tensor format
-    images_tensor = torch.stack(images)
+        for img, label in train_set:
+            images.append(img)
+            labels.append(label)
 
-    start = time.time()
-    ll_log = model.fit(images_tensor, max_iterations=num_iterations, feature_sampling=feature_sampling)
-    end = time.time()
-    print("time {:0.2f}".format(end-start))
-    
+        # Stack images and labels into tensor format
+        images_tensor = torch.stack(images)
+
+        start = time.time()
+        ll_log = model.fit(images_tensor, max_iterations=num_iterations, feature_sampling=feature_sampling)
+        end = time.time()
+        print("time {:0.2f}".format(end-start))
+    else:
+        assert False, 'Unknown fit method: ' + args.fit_method
+
     if mfa_sgd_epochs > 0:
         print('Continuing training using SGD with diagonal (instead of isotropic) noise covariance...')
         model.isotropic_noise = False
@@ -121,7 +128,7 @@ def main(argv):
     print('Saving the model...')
     torch.save(model.state_dict(), os.path.join(model_dir, 'model_'+model_name+'.pth'))
 
-    model.to('cpu')
+    #model.to('cpu')
     print('Visualizing the trained model...')
     model_image = visualize_model(model, image_shape=image_shape, end_component=10)
     image = Image.fromarray((255 * model_image).astype(np.uint8))
@@ -140,4 +147,4 @@ def main(argv):
     print('Done.')
 
 if __name__ == "__main__":
-    main(sys.argv)
+    main()

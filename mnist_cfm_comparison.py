@@ -67,7 +67,7 @@ use_cuda = torch.cuda.is_available()
 device = torch.device("cuda" if use_cuda else "cpu")
 #device = 'cpu'
 batch_size = 128
-n_epochs = 2
+n_epochs = 5
 
 sigma = 0.0
 model1 = UNetModel(dim=(1, 28, 28), num_channels=32, num_res_blocks=1).to(device)
@@ -91,7 +91,7 @@ for epoch in range(n_epochs):
         loss.backward()
         optimizer1.step()
 
-        if (i + 1) % 10 == 0:
+        if (i + 1) % 20 == 0:
             with torch.no_grad():
                 #samples = mppca.sample(batch_size)[0].view(batch_size, 1, 28, 28)
                 traj = node1.trajectory(
@@ -103,6 +103,19 @@ for epoch in range(n_epochs):
             losses1.append(loss.item())
             distances1.append(w2)
 
+
+    node1 = NeuralODE(model1, solver="dopri5", sensitivity="adjoint", atol=1e-4, rtol=1e-4)
+    with torch.no_grad():
+        traj = node1.trajectory(
+            torch.randn(100, 1, 28, 28, device=device),
+            t_span=torch.linspace(0, 1, 2, device=device),
+        )
+
+    rnd_samples = traj[-1].view(100,784)
+    mosaic = samples_to_mosaic(rnd_samples, image_shape=image_shape)
+    image = Image.fromarray((255 * mosaic).astype(np.uint8))
+    image.save("normal{}.png".format(epoch))
+
 #%%
 #################################
 #            OT-CFM
@@ -111,7 +124,7 @@ use_cuda = torch.cuda.is_available()
 device = torch.device("cuda" if use_cuda else "cpu")
 #device = 'cpu'
 batch_size = 128
-n_epochs = 2
+n_epochs = 5
 
 sigma = 0.0
 model2 = UNetModel(dim=(1, 28, 28), num_channels=32, num_res_blocks=1).to(device)
@@ -135,7 +148,7 @@ for epoch in range(n_epochs):
         loss.backward()
         optimizer1.step()
 
-        if (i + 1) % 10 == 0:
+        if (i + 1) % 20 == 0:
             with torch.no_grad():
                 samples = mppca.sample(100)[0].view(100, 1, 28, 28)
                 traj = node2.trajectory(
@@ -146,6 +159,18 @@ for epoch in range(n_epochs):
                 w2 = wasserstein(x1, x2)
             losses2.append(loss.item())
             distances2.append(w2)
+
+    with torch.no_grad():
+        samples = mppca.sample(100)[0].view(100, 1, 28, 28)
+        traj = node2.trajectory(
+            samples.to(device),
+            t_span=torch.linspace(0, 1, 10, device=device),
+        )
+
+    rnd_samples = traj[-1].view(100,784)
+    mosaic = samples_to_mosaic(rnd_samples, image_shape=image_shape)
+    image = Image.fromarray((255 * mosaic).astype(np.uint8))
+    image.save("mppca{}.png".format(epoch))
 
 #%%
 node1 = NeuralODE(model1, solver="dopri5", sensitivity="adjoint", atol=1e-4, rtol=1e-4)
