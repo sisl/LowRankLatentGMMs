@@ -66,8 +66,8 @@ def main():
         test_set = CIFAR10(root='./data', train=False, transform=trans, download=True)
     elif args.dataset == 'mnist':
         image_shape = [28, 28]          # The input image shape
-        n_components = 50               # Number of components in the mixture model
-        n_factors = 6                   # Number of factors - the latent dimension (same for all components)
+        n_components = 20               # Number of components in the mixture model
+        n_factors = 5                   # Number of factors - the latent dimension (same for all components)
         batch_size = 1000               # The EM batch size
         num_iterations = 20             # Number of EM iterations (=epochs)
         feature_sampling = False       # For faster responsibilities calculation, randomly sample the coordinates (or False)
