@@ -19,7 +19,7 @@ from torchcfm.conditional_flow_matching import ExactOptimalTransportConditionalF
 from torchcfm.models.models import MLP
 from torchcfm.utils import torch_wrapper
 
-from cnf import CNF
+from cnf import CNF, hutch_trace
 
 
 def rejection_sample(distribution, size, lower=-2, upper=2):
@@ -35,7 +35,7 @@ def rejection_sample(distribution, size, lower=-2, upper=2):
 sigma = 0.01
 dim = 1
 batch_size = 128
-n_iters = 5000
+n_iters = 2000
 
 
 # base
@@ -70,14 +70,14 @@ def train_fm_model(model, FM, base, optimizer, batch_size, n_iters, note):
         x0 = base.sample((batch_size,))[:,None]
         x1 = target.sample((batch_size,))[:,None]
 
-        t, xt, ut = FM.sample_location_and_conditional_flow(x0, x1)
-        vt = model(torch.cat([xt, t[:, None]], dim=-1))
-        loss = torch.mean((vt - ut) ** 2)
+        #t, xt, ut = FM.sample_location_and_conditional_flow(x0, x1)
+        #vt = model(torch.cat([xt, t[:, None]], dim=-1))
+        #loss = torch.mean((vt - ut) ** 2)
 
         #x1 = target.sample((batch_size,))
-        #t, xtrJ = model(x1)
-        #logprob = base.log_prob(xtrJ[1, :,1:]) - xtrJ[1, :,0]
-        #loss = -torch.mean(logprob)
+        t, xtrJ = model(x1)
+        logprob = base.log_prob(xtrJ[1, :,1:]) - xtrJ[1, :,0]
+        loss = -torch.mean(logprob)
     
         loss.backward()
         optimizer.step()
@@ -93,19 +93,20 @@ def train_fm_model(model, FM, base, optimizer, batch_size, n_iters, note):
 note = "normal-FM"
 
 # if regular flow
+#cnf = DEFunc(CNF(model, trace_estimator=hutch_trace))
 cnf = DEFunc(CNF(model))
 nde = NeuralODE(cnf, solver='dopri5', sensitivity='adjoint', atol=1e-4, rtol=1e-4)
 cnf_model = torch.nn.Sequential(Augmenter(augment_idx=1, augment_dims=1), nde)
 
 # if FM
 optimizer = torch.optim.AdamW(model.parameters(), lr=1e-3, weight_decay=1e-5)
-train_fm_model(model, FM, base, optimizer, batch_size, n_iters, note)
-#train_fm_model(cnf_model, FM, base, optimizer, batch_size, n_iters, note)
+#train_fm_model(model, FM, base, optimizer, batch_size, n_iters, note)
+train_fm_model(cnf_model, FM, base, optimizer, batch_size, n_iters, note)
 
 #%%
 n_samples = 51
-#tspan=torch.linspace(1, 0, 101)
-tspan = torch.linspace(0, 1, 201)
+tspan=torch.linspace(1, 0, 201)
+#tspan = torch.linspace(0, 1, 201)
 nde = NeuralODE(DEFunc(torch_wrapper(model)), solver="euler", sensitivity="autograd")
 #base_samples = rejection_sample(base, n_samples)[:,None]
 base_samples = torch.linspace(-2, 2, n_samples)[:,None]
@@ -113,7 +114,7 @@ with torch.no_grad():
     #trajectories = cnf_model[1].trajectory(base_samples, t_span=tspan)
     trajectories = nde.trajectory(base_samples, t_span=tspan)
 for i in range(50):
-    plt.plot(trajectories[:,i], tspan)
+    plt.plot(trajectories[:,i], tspan.flip(-1))
 plt.xlim([-2,2])
 
 #%%
@@ -129,8 +130,8 @@ def compute_log_probs(model, trajectories):
             if t > 0:
                 aug_traj = (
                     cnf_model[1].trajectory(
-                        Augmenter(1, 1)(trajectories[i,...]), t_span=torch.linspace(t, 0, 201),
-                        #Augmenter(1, 1)(trajectories[i,...]), t_span=torch.linspace(0, t, 201),
+                        #Augmenter(1, 1)(trajectories[i,...]), t_span=torch.linspace(t, 0, 201),
+                        Augmenter(1, 1)(trajectories[-i,...]), t_span=torch.linspace(0, t, 201),
                     )
                 )[-1].cpu()
                 log_probs = base.log_prob(aug_traj[:, 1]) - aug_traj[:, 0]
@@ -152,7 +153,7 @@ def plot_trajectories(trajectories, lps, ax):
     norm = Normalize(vmin=probs.min(), vmax=vmax)
 
     for i in range(n_samples):
-        x = trajectories[:,i].squeeze()
+        x = trajectories[:,i].squeeze().flip(-1)
         ax.scatter(x, tspan, s=1, c=probs[:,i], norm=norm, cmap="inferno")
 
     # Set the limits for the axes
@@ -161,7 +162,7 @@ def plot_trajectories(trajectories, lps, ax):
     ax.set_ylim(0, 1)
     ax.set_xticks([])
     ax.set_yticks([])
-    ax.set_box_aspect(1)
+    ax.set_box_aspect(0.5)
 
 #%%
 # target
@@ -198,8 +199,8 @@ def plot_pdf(distribution, ax):
 # %%
 fig = plt.figure()
 # Create a GridSpec with one row and multiple columns for subplots
-gs = gridspec.GridSpec(3, 1, height_ratios=[1, 10/3, 1], hspace=0.0)
-
+gs = gridspec.GridSpec(3, 1, height_ratios=[1, 5/3, 1], hspace=0.0)
+# 10/3
 # Create subplots with different aspect ratios
 ax1 = fig.add_subplot(gs[0])
 ax2 = fig.add_subplot(gs[1])

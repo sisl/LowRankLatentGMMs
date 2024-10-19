@@ -20,7 +20,8 @@ def hutch_trace(x_out, x_in, noise=None, **kwargs):
     """Hutchinson's trace Jacobian estimator, O(1) call to autograd.
     Code from torchdyn library: https://github.com/DiffEqML/torchdyn
     """
-    jvp = torch.autogradgrad(x_out, x_in, noise, create_graph=True)[0]
+    noise = torch.randn_like(x_in)
+    jvp = torch.autograd.grad(x_out, x_in, noise, create_graph=True)[0]
     trJ = torch.einsum('bi,bi->b', jvp, noise)
 
     return trJ
