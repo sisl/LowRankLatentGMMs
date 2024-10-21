@@ -55,7 +55,7 @@ def samples_to_mosaic(samples, image_shape=[64, 64, 3]):
     return np.vstack(rows)
 
 
-def visualize_model(model, image_shape=[64, 64, 3], start_component=0, end_component=None):
+def visualize_mixture(model, image_shape=[64, 64, 3], start_component=0, end_component=None):
     assert len(image_shape) == 2 or (len(image_shape) == 3 and image_shape[2] > 1)
     K, d, l = model.W.shape
     h, w = image_shape[:2]

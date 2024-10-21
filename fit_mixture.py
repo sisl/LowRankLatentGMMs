@@ -5,7 +5,7 @@ from torchvision.datasets import CelebA, MNIST, CIFAR10, FGVCAircraft
 import torchvision.transforms as transforms
 import numpy as np
 from models import LowRankMixtureModel
-from utils import CropTransform, ReshapeTransform, samples_to_mosaic, visualize_model
+from utils import CropTransform, ReshapeTransform, samples_to_mosaic, visualize_mixture
 from matplotlib import pyplot as plt
 import time
 
@@ -36,7 +36,7 @@ def main():
         n_components = 300              # Number of components in the mixture model
         n_factors = 10                  # Number of factors - the latent dimension (same for all components)
         batch_size = 1000               # The EM batch size
-        num_iterations = 10              # Number of EM iterations (=epochs)
+        num_iterations = 2              # Number of EM iterations (=epochs)
         feature_sampling = 0.2          # For faster responsibilities calculation, randomly sample the coordinates (or False)
         mfa_sgd_epochs = 0              # Perform additional training with diagonal (per-pixel) covariance, using SGD
         init_method = 'rnd_samples'     # Initialize each component from few random samples using PPCA
@@ -49,7 +49,7 @@ def main():
         n_components = 300              # Number of components in the mixture model
         n_factors = 10                  # Number of factors - the latent dimension (same for all components)
         batch_size = 2000               # The EM batch size
-        num_iterations = 20             # Number of EM iterations (=epochs)
+        num_iterations = 2             # Number of EM iterations (=epochs)
         feature_sampling = 0.2          # For faster responsibilities calculation, randomly sample the coordinates (or False)
         mfa_sgd_epochs = 0              # Perform additional training with diagonal (per-pixel) covariance, using SGD
         init_method = 'rnd_samples'     # Initialize each component from few random samples using PPCA
@@ -58,7 +58,7 @@ def main():
                 transforms.Resize(image_shape[0]),
                 #transforms.RandomHorizontalFlip(),
                 transforms.ToTensor(),
-                #transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
+                transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
                 ReshapeTransform([-1])
             ]
         )
@@ -68,7 +68,7 @@ def main():
         image_shape = [224, 224, 3]  # Aircraft images are larger, you can resize to 224x224
         n_components = 100           # Number of components in the mixture model
         n_factors = 5                # Number of factors - the latent dimension (same for all components)
-        batch_size = 1000            # The EM batch size
+        batch_size = 100            # The EM batch size
         num_iterations = 10          # Number of EM iterations (=epochs)
         feature_sampling = 0.2       # For faster responsibilities calculation, randomly sample the coordinates (or False)
         mfa_sgd_epochs = 0           # Perform additional training with diagonal (per-pixel) covariance, using SGD
@@ -78,8 +78,10 @@ def main():
         std = [0.229, 0.224, 0.225]
         trans = transforms.Compose([
             transforms.Resize((224, 224)),
+            transforms.Resize(image_shape[0]),
             transforms.ToTensor(),
             transforms.Normalize(mean, std),
+            ReshapeTransform([-1])
         ])
         # Load the FGVC Aircraft dataset
         train_set = FGVCAircraft(root='./data/', split = 'trainval', transform=trans, download=True)
@@ -90,7 +92,7 @@ def main():
         n_components = 20               # Number of components in the mixture model
         n_factors = 5                   # Number of factors - the latent dimension (same for all components)
         batch_size = 1000               # The EM batch size
-        num_iterations = 20             # Number of EM iterations (=epochs)
+        num_iterations = 2             # Number of EM iterations (=epochs)
         feature_sampling = False       # For faster responsibilities calculation, randomly sample the coordinates (or False)
         mfa_sgd_epochs = 0              # Perform additional training with diagonal (per-pixel) covariance, using SGD
         init_method = 'kmeans'         # Initialize by using k-means clustering
@@ -149,9 +151,9 @@ def main():
     print('Saving the model...')
     torch.save(model.state_dict(), os.path.join(model_dir, 'model_'+model_name+'.pth'))
 
-    #model.to('cpu')
+    model.to('cpu')
     print('Visualizing the trained model...')
-    model_image = visualize_model(model, image_shape=image_shape, end_component=10)
+    model_image = visualize_mixture(model, image_shape=image_shape, end_component=10)
     image = Image.fromarray((255 * model_image).astype(np.uint8))
     image.save(os.path.join(figures_dir, 'model_'+model_name+'.png'))
 
