@@ -1,7 +1,7 @@
 import argparse
 import sys, os
 import torch
-from torchvision.datasets import CelebA, MNIST, CIFAR10
+from torchvision.datasets import CelebA, MNIST, CIFAR10, FGVCAircraft
 import torchvision.transforms as transforms
 import numpy as np
 from models import LowRankMixtureModel
@@ -21,7 +21,7 @@ def main():
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--dataset', type=str, default='mnist',
-                        choices=['mnist', 'celeba', 'cifar10'])
+                        choices=['mnist', 'celeba', 'cifar10', 'fgvc-aircraft'])
     parser.add_argument('--fit_method', type=str, default='batch_em',
                         choices=['batch_em', 'em'])
     args = parser.parse_args()
@@ -64,6 +64,27 @@ def main():
         )
         train_set = CIFAR10(root='./data', train=True, transform=trans, download=True)
         test_set = CIFAR10(root='./data', train=False, transform=trans, download=True)
+    elif args.dataset == "fgvc-aircraft":
+        image_shape = [224, 224, 3]  # Aircraft images are larger, you can resize to 224x224
+        n_components = 100           # Number of components in the mixture model
+        n_factors = 5                # Number of factors - the latent dimension (same for all components)
+        batch_size = 1000            # The EM batch size
+        num_iterations = 10          # Number of EM iterations (=epochs)
+        feature_sampling = 0.2       # For faster responsibilities calculation, randomly sample the coordinates (or False)
+        mfa_sgd_epochs = 0           # Perform additional training with diagonal (per-pixel) covariance, using SGD
+        init_method = 'rnd_samples'  # Initialize each component from few random samples using PPCA
+        # Define the transformation pipeline
+        mean = [0.485, 0.456, 0.406]
+        std = [0.229, 0.224, 0.225]
+        trans = transforms.Compose([
+            transforms.Resize((224, 224)),
+            transforms.ToTensor(),
+            transforms.Normalize(mean, std),
+        ])
+        # Load the FGVC Aircraft dataset
+        train_set = FGVCAircraft(root='./data/', split = 'trainval', transform=trans, download=True)
+        test_set = FGVCAircraft(root='./data/', split='test', transform=trans, download=True)
+
     elif args.dataset == 'mnist':
         image_shape = [28, 28]          # The input image shape
         n_components = 20               # Number of components in the mixture model
