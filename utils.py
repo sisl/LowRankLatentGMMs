@@ -1,5 +1,6 @@
 import glob
 import matplotlib.pyplot as plt
+from matplotlib.colors import Normalize
 import numpy as np
 import os
 from PIL import Image
@@ -174,6 +175,36 @@ def visualize_model(model, base, title):
         plt.savefig("figures/trajectory/{}/{:0.2f}.png".format(title, t), dpi=100)
         plt.close()
 
+def plot_pdf(distribution, ax):
+    x = torch.linspace(-2, 2, 500)
+    probs = distribution.log_prob(x).exp()
+    norm = Normalize(vmin=probs.min(), vmax=probs.max())
+    ax.scatter(x, probs, c=probs, s=2, norm=norm, cmap="inferno")
+    ax.set_facecolor('black')
+    ax.set_xlim(x.min(), x.max())
+    ax.set_xticks([])
+    ax.set_yticks([])
+    ax.set_ylim(0, 0.6)
+    ax.set_aspect(2.0)
+
+
+def plot_1d_trajectories(trajectories, base, lps, tspan, ax):
+    probs = lps.exp()
+    vmax = base.log_prob(torch.tensor(0)).exp()
+    norm = Normalize(vmin=probs.min(), vmax=vmax)
+
+    for i in range(trajectories.shape[1]):
+        x = trajectories[:,i].squeeze().flip(-1)
+        ax.scatter(x, tspan, s=1, c=probs[:,i], norm=norm, cmap="inferno")
+
+    # Set the limits for the axes
+    ax.set_facecolor('black')
+    ax.set_xlim(-2, 2)
+    ax.set_ylim(0, 1)
+    ax.set_xticks([])
+    ax.set_yticks([])
+    ax.set_box_aspect(0.5)
+
 
 def make_gif(frame_folder, out_path, delete_frames=True):
     files = [f for f in glob.glob(f"{frame_folder}/*.png")]
@@ -188,3 +219,6 @@ def make_gif(frame_folder, out_path, delete_frames=True):
     if delete_frames:
         for f in files:
             os.remove(f)
+
+
+        

@@ -390,7 +390,7 @@ class LowRankMixtureModel(torch.nn.Module):
         test_samples = torch.stack(test_samples).to(self.mu.device)
 
         lls = []
-        loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=8)
+        loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=4)
 
         def clip_pi(pi, min_weight=1e-4):
             # Ensure no weight is below the minimum
@@ -484,7 +484,7 @@ class LowRankMixtureModel(torch.nn.Module):
 
         # main training loop
         optimizer = torch.optim.Adam(self.parameters(), lr=learning_rate)
-        loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=8)
+        loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=4)
         lls = []
         self.train()
         for epoch in range(max_epochs):

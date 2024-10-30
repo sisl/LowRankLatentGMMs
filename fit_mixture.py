@@ -34,10 +34,10 @@ def main():
     if args.dataset == 'celeba':
         image_shape = [64, 64, 3]       # The input image shape
         n_components = 300              # Number of components in the mixture model
-        n_factors = 10                  # Number of factors - the latent dimension (same for all components)
+        n_factors = 6                  # Number of factors - the latent dimension (same for all components)
         batch_size = 1000               # The EM batch size
-        num_iterations = 2              # Number of EM iterations (=epochs)
-        feature_sampling = 0.2          # For faster responsibilities calculation, randomly sample the coordinates (or False)
+        num_iterations = 3              # Number of EM iterations (=epochs)
+        feature_sampling = 0.3          # For faster responsibilities calculation, randomly sample the coordinates (or False)
         mfa_sgd_epochs = 0              # Perform additional training with diagonal (per-pixel) covariance, using SGD
         init_method = 'rnd_samples'     # Initialize each component from few random samples using PPCA
         trans = transforms.Compose([CropTransform((25, 50, 25+128, 50+128)), transforms.Resize(image_shape[0]),
@@ -49,7 +49,7 @@ def main():
         n_components = 300              # Number of components in the mixture model
         n_factors = 10                  # Number of factors - the latent dimension (same for all components)
         batch_size = 2000               # The EM batch size
-        num_iterations = 2             # Number of EM iterations (=epochs)
+        num_iterations = 10             # Number of EM iterations (=epochs)
         feature_sampling = 0.2          # For faster responsibilities calculation, randomly sample the coordinates (or False)
         mfa_sgd_epochs = 0              # Perform additional training with diagonal (per-pixel) covariance, using SGD
         init_method = 'rnd_samples'     # Initialize each component from few random samples using PPCA
@@ -58,34 +58,34 @@ def main():
                 transforms.Resize(image_shape[0]),
                 #transforms.RandomHorizontalFlip(),
                 transforms.ToTensor(),
-                transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
+                #transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
                 ReshapeTransform([-1])
             ]
         )
         train_set = CIFAR10(root='./data', train=True, transform=trans, download=True)
         test_set = CIFAR10(root='./data', train=False, transform=trans, download=True)
     elif args.dataset == "fgvc-aircraft":
-        image_shape = [224, 224, 3]  # Aircraft images are larger, you can resize to 224x224
-        n_components = 100           # Number of components in the mixture model
-        n_factors = 5                # Number of factors - the latent dimension (same for all components)
-        batch_size = 100            # The EM batch size
-        num_iterations = 10          # Number of EM iterations (=epochs)
-        feature_sampling = 0.2       # For faster responsibilities calculation, randomly sample the coordinates (or False)
+        image_shape = [64, 64, 3]  # Aircraft images are larger, you can resize to 224x224
+        n_components = 300           # Number of components in the mixture model
+        n_factors = 6                # Number of factors - the latent dimension (same for all components)
+        batch_size = 200            # The EM batch size
+        num_iterations = 3          # Number of EM iterations (=epochs)
+        feature_sampling = 0.3       # For faster responsibilities calculation, randomly sample the coordinates (or False)
         mfa_sgd_epochs = 0           # Perform additional training with diagonal (per-pixel) covariance, using SGD
         init_method = 'rnd_samples'  # Initialize each component from few random samples using PPCA
         # Define the transformation pipeline
         mean = [0.485, 0.456, 0.406]
         std = [0.229, 0.224, 0.225]
         trans = transforms.Compose([
-            transforms.Resize((224, 224)),
+            transforms.Resize((64, 64)),
             transforms.Resize(image_shape[0]),
             transforms.ToTensor(),
             transforms.Normalize(mean, std),
             ReshapeTransform([-1])
         ])
         # Load the FGVC Aircraft dataset
-        train_set = FGVCAircraft(root='./data/', split = 'trainval', transform=trans, download=True)
-        test_set = FGVCAircraft(root='./data/', split='test', transform=trans, download=True)
+        train_set = FGVCAircraft(root='./data', split = 'trainval', transform=trans, download=True)
+        test_set = FGVCAircraft(root='./data', split='test', transform=trans, download=True)
 
     elif args.dataset == 'mnist':
         image_shape = [28, 28]          # The input image shape
