@@ -15,14 +15,14 @@ from utils import samples_to_mosaic
 
 image_shape = [28, 28]          # The input image shape
 n_components = 50               # Number of components in the mixture model
-n_factors = 6                   # Number of factors - the latent dimension (same for all components)
+n_factors = 5                   # Number of factors - the latent dimension (same for all components)
 init_method = 'kmeans'
     
 print('Loading pre-trained MFA model...')
 device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 model_dir = './models/' + 'mnist'
 mppca = LowRankMixtureModel(n_components=n_components, n_features=np.prod(image_shape), n_factors=n_factors).to(device=device)
-mppca.load_state_dict(torch.load(os.path.join(model_dir, 'model_c_{}_l_{}_init_{}.pth'.format(n_components, n_factors, init_method))))
+mppca.load_state_dict(torch.load(os.path.join(model_dir, 'model_c_{}_l_{}.pth'.format(n_components, n_factors, init_method))))
 # mppca.sample(10)[0].view(10, 1, 28, 28)
 # %%
 import os
@@ -67,7 +67,7 @@ use_cuda = torch.cuda.is_available()
 device = torch.device("cuda" if use_cuda else "cpu")
 #device = 'cpu'
 batch_size = 128
-n_epochs = 5
+n_epochs = 1
 
 sigma = 0.0
 model1 = UNetModel(dim=(1, 28, 28), num_channels=32, num_res_blocks=1).to(device)
@@ -124,7 +124,7 @@ use_cuda = torch.cuda.is_available()
 device = torch.device("cuda" if use_cuda else "cpu")
 #device = 'cpu'
 batch_size = 128
-n_epochs = 5
+n_epochs = 1
 
 sigma = 0.0
 model2 = UNetModel(dim=(1, 28, 28), num_channels=32, num_res_blocks=1).to(device)
@@ -142,12 +142,13 @@ for epoch in range(n_epochs):
         x1 = data[0].to(device)
         #x0 = torch.randn_like(x1)
         x0 = mppca.sample(batch_size)[0].view(batch_size, 1, 28, 28)
-        t, xt, ut = FM1.sample_location_and_conditional_flow(x0, x1)
+        t, xt, ut = FM2.sample_location_and_conditional_flow(x0, x1)
         vt = model2(t, xt)
         loss = torch.mean((vt - ut) ** 2)
         loss.backward()
-        optimizer1.step()
+        optimizer2.step()
 
+        '''
         if (i + 1) % 20 == 0:
             with torch.no_grad():
                 samples = mppca.sample(100)[0].view(100, 1, 28, 28)
@@ -159,7 +160,7 @@ for epoch in range(n_epochs):
                 w2 = wasserstein(x1, x2)
             losses2.append(loss.item())
             distances2.append(w2)
-
+        '''
     with torch.no_grad():
         samples = mppca.sample(100)[0].view(100, 1, 28, 28)
         traj = node2.trajectory(

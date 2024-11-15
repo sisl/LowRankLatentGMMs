@@ -62,7 +62,7 @@ class LowRankMixtureModel(torch.nn.Module):
 
         Returns:
         samples (tensor): [n x d] tensor of generated samples
-        sampled_compoments (torch.Tensor): [n] tensor containing the underlying
+        compoments (torch.Tensor): [n] tensor containing the underlying 
             component that generated each sample
         """
         K, d, l = self.W.shape
@@ -216,7 +216,7 @@ class LowRankMixtureModel(torch.nn.Module):
         """
         # See https://stats.stackexchange.com/questions/134282/relationship-between-svd-and-pca-how-to-use-svd-to-perform-pca
         mu = torch.mean(x, dim=0)
-        U, S, V = torch.linalg.svd(x - mu.reshape(1, -1), full_matrices=False)
+        U, S, V = torch.linalg.svd(x - mu.reshape(1, -1), full_matrices=False, driver="gesvd")
 
         V = V.T.to(self.mu.device)
         S = S.to(self.mu.device)
