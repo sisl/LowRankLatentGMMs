@@ -1,5 +1,5 @@
 import argparse
-import sys, os
+import os
 import torch
 from torchvision.datasets import CelebA, MNIST, CIFAR10, FGVCAircraft
 import torchvision.transforms as transforms
@@ -24,19 +24,18 @@ def main():
                         choices=['mnist', 'celeba', 'cifar10', 'fgvc-aircraft'])
     parser.add_argument('--fit_method', type=str, default='batch_em',
                         choices=['batch_em', 'em'])
+    parser.add_argument('--n_components', type=int, default=100)
+    parser.add_argument('--n_factors', type=int, default=5)
     args = parser.parse_args()
 
-
-    #dataset = argv[1] if len(argv) == 2 else 'celeba'
-    #dataset = 'cifar10'
     print('Preparing dataset and parameters for', args.dataset, '...')
 
     if args.dataset == 'celeba':
         image_shape = [64, 64, 3]       # The input image shape
-        n_components = 300              # Number of components in the mixture model
-        n_factors = 6                  # Number of factors - the latent dimension (same for all components)
+        n_components = args.n_components              # Number of components in the mixture model (300)
+        n_factors = args.n_factors                  # Number of factors - the latent dimension (same for all components) (6)
         batch_size = 1000               # The EM batch size
-        num_iterations = 3              # Number of EM iterations (=epochs)
+        num_iterations = 5              # Number of EM iterations (=epochs)
         feature_sampling = 0.3          # For faster responsibilities calculation, randomly sample the coordinates (or False)
         mfa_sgd_epochs = 0              # Perform additional training with diagonal (per-pixel) covariance, using SGD
         init_method = 'rnd_samples'     # Initialize each component from few random samples using PPCA
@@ -46,8 +45,8 @@ def main():
         test_set = CelebA(root='./data', split='test', transform=trans, download=True)
     elif args.dataset == 'cifar10':
         image_shape = [32, 32, 3]       # The input image shape
-        n_components = 300              # Number of components in the mixture model
-        n_factors = 10                  # Number of factors - the latent dimension (same for all components)
+        n_components = args.n_components              # Number of components in the mixture model
+        n_factors = args.n_factors                  # Number of factors - the latent dimension (same for all components)
         batch_size = 2000               # The EM batch size
         num_iterations = 10             # Number of EM iterations (=epochs)
         feature_sampling = 0.2          # For faster responsibilities calculation, randomly sample the coordinates (or False)
@@ -56,9 +55,9 @@ def main():
         trans = transforms.Compose(
             [
                 transforms.Resize(image_shape[0]),
-                #transforms.RandomHorizontalFlip(),
+                transforms.RandomHorizontalFlip(),
                 transforms.ToTensor(),
-                #transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
+                transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
                 ReshapeTransform([-1])
             ]
         )
@@ -66,8 +65,8 @@ def main():
         test_set = CIFAR10(root='./data', train=False, transform=trans, download=True)
     elif args.dataset == "fgvc-aircraft":
         image_shape = [64, 64, 3]  # Aircraft images are larger, you can resize to 224x224
-        n_components = 300           # Number of components in the mixture model
-        n_factors = 6                # Number of factors - the latent dimension (same for all components)
+        n_components = args.n_components           # Number of components in the mixture model
+        n_factors = args.n_factors                # Number of factors - the latent dimension (same for all components)
         batch_size = 200            # The EM batch size
         num_iterations = 3          # Number of EM iterations (=epochs)
         feature_sampling = 0.3       # For faster responsibilities calculation, randomly sample the coordinates (or False)
@@ -89,8 +88,8 @@ def main():
 
     elif args.dataset == 'mnist':
         image_shape = [28, 28]          # The input image shape
-        n_components = 20               # Number of components in the mixture model
-        n_factors = 5                   # Number of factors - the latent dimension (same for all components)
+        n_components = args.n_components               # Number of components in the mixture model
+        n_factors = args.n_factors                   # Number of factors - the latent dimension (same for all components)
         batch_size = 1000               # The EM batch size
         num_iterations = 2             # Number of EM iterations (=epochs)
         feature_sampling = False       # For faster responsibilities calculation, randomly sample the coordinates (or False)
@@ -103,7 +102,6 @@ def main():
         assert False, 'Unknown dataset: ' + args.dataset
 
     device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
-    #device = 'cpu'
 
     model_dir = './models/'+args.dataset
     os.makedirs(model_dir, exist_ok=True)
@@ -153,7 +151,7 @@ def main():
 
     model.to('cpu')
     print('Visualizing the trained model...')
-    model_image = visualize_mixture(model, image_shape=image_shape, end_component=10)
+    model_image = visualize_mixture(model, image_shape=image_shape, end_component=5)
     image = Image.fromarray((255 * model_image).astype(np.uint8))
     image.save(os.path.join(figures_dir, 'model_'+model_name+'.png'))
 
@@ -167,6 +165,7 @@ def main():
     plt.plot(ll_log, label='c{}_l{}_b{}'.format(n_components, n_factors, batch_size))
     plt.grid(True)
     plt.savefig(os.path.join(figures_dir, 'training_graph_'+model_name+'.png'))
+    np.savetxt(os.path.join(figures_dir, 'll_log.txt'), ll_log)
     print('Done.')
 
 if __name__ == "__main__":

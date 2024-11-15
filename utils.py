@@ -187,7 +187,7 @@ def plot_pdf(distribution, ax):
     ax.set_ylim(0, 0.6)
     ax.set_aspect(2.0)
 
-
+# only flip for FFJORD!
 def plot_1d_trajectories(trajectories, base, lps, tspan, ax):
     probs = lps.exp()
     vmax = base.log_prob(torch.tensor(0)).exp()
