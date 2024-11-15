@@ -37,7 +37,6 @@ def main():
         batch_size = 1000               # The EM batch size
         num_iterations = 5              # Number of EM iterations (=epochs)
         feature_sampling = 0.3          # For faster responsibilities calculation, randomly sample the coordinates (or False)
-        mfa_sgd_epochs = 0              # Perform additional training with diagonal (per-pixel) covariance, using SGD
         init_method = 'rnd_samples'     # Initialize each component from few random samples using PPCA
         trans = transforms.Compose([CropTransform((25, 50, 25+128, 50+128)), transforms.Resize(image_shape[0]),
                                     transforms.ToTensor(),  ReshapeTransform([-1])])
@@ -50,7 +49,6 @@ def main():
         batch_size = 2000               # The EM batch size
         num_iterations = 10             # Number of EM iterations (=epochs)
         feature_sampling = 0.2          # For faster responsibilities calculation, randomly sample the coordinates (or False)
-        mfa_sgd_epochs = 0              # Perform additional training with diagonal (per-pixel) covariance, using SGD
         init_method = 'rnd_samples'     # Initialize each component from few random samples using PPCA
         trans = transforms.Compose(
             [
@@ -70,7 +68,6 @@ def main():
         batch_size = 200            # The EM batch size
         num_iterations = 3          # Number of EM iterations (=epochs)
         feature_sampling = 0.3       # For faster responsibilities calculation, randomly sample the coordinates (or False)
-        mfa_sgd_epochs = 0           # Perform additional training with diagonal (per-pixel) covariance, using SGD
         init_method = 'rnd_samples'  # Initialize each component from few random samples using PPCA
         # Define the transformation pipeline
         mean = [0.485, 0.456, 0.406]
@@ -93,7 +90,6 @@ def main():
         batch_size = 1000               # The EM batch size
         num_iterations = 2             # Number of EM iterations (=epochs)
         feature_sampling = False       # For faster responsibilities calculation, randomly sample the coordinates (or False)
-        mfa_sgd_epochs = 0              # Perform additional training with diagonal (per-pixel) covariance, using SGD
         init_method = 'kmeans'         # Initialize by using k-means clustering
         trans = transforms.Compose([transforms.ToTensor(),  ReshapeTransform([-1])])
         train_set = MNIST(root='./data', train=True, transform=trans, download=True)
@@ -138,13 +134,6 @@ def main():
         print("time {:0.2f}".format(end-start))
     else:
         assert False, 'Unknown fit method: ' + args.fit_method
-
-    if mfa_sgd_epochs > 0:
-        print('Continuing training using SGD with diagonal (instead of isotropic) noise covariance...')
-        model.isotropic_noise = False
-        ll_log_sgd = model.sgd_mfa_train(train_set, test_set, batch_size=1000, test_size=256, max_epochs=mfa_sgd_epochs,
-                                         feature_sampling=feature_sampling)
-        ll_log += ll_log_sgd
 
     print('Saving the model...')
     torch.save(model.state_dict(), os.path.join(model_dir, 'model_'+model_name+'.pth'))
