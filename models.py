@@ -163,6 +163,11 @@ class LowRankMixtureModel(torch.nn.Module):
         sample_lls = torch.logsumexp(self.per_component_log_likelihood(x, sampled_features), dim=1)
 
         return sample_lls
+    
+
+    def log_prob(self, x):
+        x = x.reshape(x.shape[0], -1)
+        return self.per_sample_log_likelihood(x)
 
 
     def responsibilities(self, x, sampled_features=None):

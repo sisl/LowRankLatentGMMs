@@ -1,4 +1,3 @@
-#%%
 import argparse
 import torch
 import numpy as np
@@ -32,7 +31,7 @@ args = parser.parse_args()
 '''
 
 args = argparse.Namespace()
-args.base = "mppca"
+args.base = "normal"
 args.model_file = "model_c_50_l_5.pth"
 args.batch_size = 128
 args.n_epochs = 1
@@ -88,8 +87,6 @@ def sample_base(base, N, image_shape, device):
         
     return samples.to(device)
 
-#%%
-'''
 # main training loop
 start = time.time()
 for epoch in range(args.n_epochs):
@@ -115,8 +112,6 @@ for epoch in range(args.n_epochs):
     mosaic = samples_to_mosaic(rnd_samples, image_shape=image_shape)
     image = Image.fromarray((255 * mosaic).astype(np.uint8))
     image.save(figure_dir + "{}_base_epoch_{}.png".format(args.base, epoch))
-'''
-# %%
 
 
 images = []
@@ -125,56 +120,62 @@ for img, label in test_set:
 # stack images and labels into tensor format
 images_tensor = torch.stack(images)
 
-my_test = images_tensor[:200, ...]
+my_test = images_tensor[:100, ...]
 
-#%%
-
-def hutch_trace(x_out, x_in, noise=None, **kwargs):
-    """Hutchinson's trace Jacobian estimator, O(1) call to autograd.
-    Code from torchdyn library: https://github.com/DiffEqML/torchdyn
-    """
-    x_out = x_out.reshape(x_out.shape[0], -1)
-    x_in = x_in.reshape(x_in.shape[0], -1)
-    noise = torch.randn_like(x_in)
-    jvp = torch.autograd.grad(x_out, x_in, noise, create_graph=True, allow_unused=True)[0]
-    trJ = torch.einsum('bi,bi->b', jvp, noise)
-
-    return trJ
 
 class MYCNF(torch.nn.Module):
-    """
-    Continuous normalizing flow class.
-    Code from torchdyn library: https://github.com/DiffEqML/torchdyn
-    """
     def __init__(self, net, trace_estimator=None, noise_dist=None):
         super().__init__()
         self.net = net
-        self.trace_estimator = trace_estimator if trace_estimator is not None else hutch_trace
+        self.trace_estimator = trace_estimator if trace_estimator is not None else hutch_trace_4D;
         self.noise_dist, self.noise = noise_dist, None
 
-    def forward(self, t, x, *args, **kwargs):
+            
+    def forward(self, t, x, *args, **kwargs): 
         with torch.set_grad_enabled(True):
-            x_in = x[:, 1:].requires_grad_(True)  # first dimension reserved to divergence propagation
-            #x_out = self.net(torch.cat([x_in, t * torch.ones(x.shape[0], 1).type_as(x_in)], dim=-1))
-            x_out = self.net(t = t * torch.ones(x.shape[0], 1).type_as(x_in).to(device), x=x_in)#x=torch.cat([x_in, t * torch.ones(x.shape[0], 1).type_as(x_in)], dim=-1))
+            x_in = torch.autograd.Variable(x[:,1:], requires_grad=True).to(x) # first dimension reserved to divergence propagation      
+            #x_in = x[:,1:].to(x)    
+            # the neural network will handle the data-dynamics here
+            x_out = self.net(t, x_in)
+                
             trJ = self.trace_estimator(x_out, x_in, noise=self.noise)
-        return (
-            torch.cat([-trJ[:, None], x_out], 1) + 0 * x
-        )  # `+ 0*x` has the only purpose of connecting x[:, 0] to autograd graph
-    
+            
+            # changed for 4D. `B -> B x 1 x H x W`
+            trJ = trJ[:, None, None, None].expand((x_out.shape[0], 1, *x_out.shape[2:]))
+        return torch.cat([-trJ, x_out], 1) #+ 0*x # `+ 0*x` has the only purpose of connecting x[:, 0] to autograd graph
+
+
+# changed for 4D
+def hutch_trace_4D(x_out, x_in, noise=None, **kwargs):
+    """Hutchinson's trace Jacobian estimator, O(1) call to autograd"""
+    #noise = noise.view(x_out.shape)
+    noise = torch.randn_like(x_out)
+    jvp = torch.autograd.grad(x_out, x_in, noise, create_graph=False)[0]
+    trJ = torch.einsum('bijk,bijk->b', jvp, noise)
+    return trJ
+
+
+
+model.to('cpu')
+if args.base == "mppca":
+    base.to('cpu')
 
 cnf = DEFunc(MYCNF(model))
 nde = NeuralODE(cnf, solver="euler", sensitivity="autograd")
 cnf_model = torch.nn.Sequential(Augmenter(augment_idx=1, augment_dims=1), nde)
 
+# should move the model to CPU?
 
 t = 1
-#flattened = my_test.reshape(200, 784)
 with torch.no_grad():
     aug_traj = (
-        cnf_model[1].to(device).trajectory(
-            Augmenter(1, 1)(my_test).to(device), t_span=torch.linspace(t, 0, 101).to(device),
+        cnf_model[1].to('cpu').trajectory(
+            Augmenter(1, 1)(my_test), t_span=torch.linspace(t, 0, 101),
         )
-    )[-1].cpu()
-    log_probs = base.log_prob(aug_traj[:, 1:]) - aug_traj[:, 0]
-# %%
+    )[-1]
+    augtraj1 = aug_traj[:, 1:].reshape(1000, -1)
+
+    log_probs = base.log_prob(augtraj1) - aug_traj[:, 0, 0, 0]
+
+print(aug_traj[:, 0, 0, 0].mean())
+print(log_probs.mean())
