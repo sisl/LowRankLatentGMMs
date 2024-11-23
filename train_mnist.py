@@ -20,7 +20,7 @@ from models import LowRankMixtureModel
 from utils import samples_to_mosaic
 from cnf import CNF
 
-'''
+
 parser = argparse.ArgumentParser()
 parser.add_argument('--base', type=str, default='normal',
                     choices=['normal', 'mppca'])
@@ -28,14 +28,14 @@ parser.add_argument('--model_file', type=str)
 parser.add_argument('--batch_size', type=int, default=128)
 parser.add_argument('--n_epochs', type=int, default=1)
 args = parser.parse_args()
-'''
 
+'''
 args = argparse.Namespace()
 args.base = "normal"
 args.model_file = "model_c_50_l_5.pth"
 args.batch_size = 128
 args.n_epochs = 1
-
+'''
 
 image_shape = [28, 28]
 n_features = np.prod(image_shape)
@@ -88,6 +88,8 @@ def sample_base(base, N, image_shape, device):
     return samples.to(device)
 
 # main training loop
+losses = []
+counter = 0
 start = time.time()
 for epoch in range(args.n_epochs):
     for i, data in enumerate(tqdm(train_loader, desc="epoch {}: ".format(epoch+1))):
@@ -99,6 +101,10 @@ for epoch in range(args.n_epochs):
         loss = torch.mean((vt - ut) ** 2)
         loss.backward()
         optimizer.step()
+        if counter % 20 == 0:
+            losses.append(loss.item())
+        counter += 1
+
 
     with torch.no_grad():
         samples = sample_base(base, 100, image_shape, device)
@@ -113,69 +119,4 @@ for epoch in range(args.n_epochs):
     image = Image.fromarray((255 * mosaic).astype(np.uint8))
     image.save(figure_dir + "{}_base_epoch_{}.png".format(args.base, epoch))
 
-
-images = []
-for img, label in test_set:
-    images.append(img)
-# stack images and labels into tensor format
-images_tensor = torch.stack(images)
-
-my_test = images_tensor[:100, ...]
-
-
-class MYCNF(torch.nn.Module):
-    def __init__(self, net, trace_estimator=None, noise_dist=None):
-        super().__init__()
-        self.net = net
-        self.trace_estimator = trace_estimator if trace_estimator is not None else hutch_trace_4D;
-        self.noise_dist, self.noise = noise_dist, None
-
-            
-    def forward(self, t, x, *args, **kwargs): 
-        with torch.set_grad_enabled(True):
-            x_in = torch.autograd.Variable(x[:,1:], requires_grad=True).to(x) # first dimension reserved to divergence propagation      
-            #x_in = x[:,1:].to(x)    
-            # the neural network will handle the data-dynamics here
-            x_out = self.net(t, x_in)
-                
-            trJ = self.trace_estimator(x_out, x_in, noise=self.noise)
-            
-            # changed for 4D. `B -> B x 1 x H x W`
-            trJ = trJ[:, None, None, None].expand((x_out.shape[0], 1, *x_out.shape[2:]))
-        return torch.cat([-trJ, x_out], 1) #+ 0*x # `+ 0*x` has the only purpose of connecting x[:, 0] to autograd graph
-
-
-# changed for 4D
-def hutch_trace_4D(x_out, x_in, noise=None, **kwargs):
-    """Hutchinson's trace Jacobian estimator, O(1) call to autograd"""
-    #noise = noise.view(x_out.shape)
-    noise = torch.randn_like(x_out)
-    jvp = torch.autograd.grad(x_out, x_in, noise, create_graph=False)[0]
-    trJ = torch.einsum('bijk,bijk->b', jvp, noise)
-    return trJ
-
-
-
-model.to('cpu')
-if args.base == "mppca":
-    base.to('cpu')
-
-cnf = DEFunc(MYCNF(model))
-nde = NeuralODE(cnf, solver="euler", sensitivity="autograd")
-cnf_model = torch.nn.Sequential(Augmenter(augment_idx=1, augment_dims=1), nde)
-
-# should move the model to CPU?
-
-t = 1
-with torch.no_grad():
-    aug_traj = (
-        cnf_model[1].to('cpu').trajectory(
-            Augmenter(1, 1)(my_test), t_span=torch.linspace(t, 0, 101),
-        )
-    )[-1]
-    augtraj1 = aug_traj[:, 1:].reshape(1000, -1)
-
-    log_probs = base.log_prob(augtraj1) - aug_traj[:, 0, 0, 0]
-
-print(aug_traj[:, 0, 0, 0].mean())
-print(log_probs.mean())
+np.savetxt(figure_dir + "loss.txt", losses)

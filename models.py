@@ -221,7 +221,7 @@ class LowRankMixtureModel(torch.nn.Module):
         """
         # See https://stats.stackexchange.com/questions/134282/relationship-between-svd-and-pca-how-to-use-svd-to-perform-pca
         mu = torch.mean(x, dim=0)
-        U, S, V = torch.linalg.svd(x - mu.reshape(1, -1), full_matrices=False, driver="gesvd")
+        U, S, V = torch.linalg.svd(x - mu.reshape(1, -1), full_matrices=False)
 
         V = V.T.to(self.mu.device)
         S = S.to(self.mu.device)

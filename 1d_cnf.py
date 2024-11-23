@@ -51,6 +51,8 @@ target = MixtureSameFamily(
     Normal(loc=means, scale=stds)
 )
 
+torch.manual_seed(0)
+
 # CNF model
 model = MLP(dim=dim, w=256, time_varying=True)
 cnf = DEFunc(CNF(model))
@@ -121,7 +123,7 @@ def plot_trajectories(trajectories, lps, ax):
         segments = np.concatenate([points[:-2],points[1:-1], points[2:]], axis=1)
         lc = LineCollection(segments, cmap=args.cmap, norm=norm)
         lc.set_array(probs[:,i])
-        lc.set_linewidth(1)
+        lc.set_linewidth(2)
         ax.add_collection(lc)
 
     ax.set_facecolor('black')
@@ -142,7 +144,7 @@ def plot_pdf(distribution, ax):
     segments = np.concatenate([points[:-2],points[1:-1], points[2:]], axis=1)
     lc = LineCollection(segments, cmap=args.cmap, norm=norm)
     lc.set_array(probs)
-    lc.set_linewidth(1)
+    lc.set_linewidth(2)
     ax.add_collection(lc)
     
     ax.set_facecolor('black')
@@ -150,11 +152,11 @@ def plot_pdf(distribution, ax):
     ax.set_xticks([])
     ax.set_yticks([])
     ax.set_ylim(0, 0.6)
-    ax.set_aspect(4.0)
+    ax.set_aspect(2.0)
 
 fig = plt.figure()
 # need box_aspect / height to be 6/10
-height = args.aspect / (6./10.)
+height = args.aspect / (3./10.)
 gs = gridspec.GridSpec(3, 1, height_ratios=[1, height, 1], hspace=0.0)
 
 ax1 = fig.add_subplot(gs[0])
