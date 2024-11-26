@@ -10,6 +10,8 @@ from torchcfm.utils import torch_wrapper
 from torchdyn.core import DEFunc, NeuralODE
 from cnf import compute_log_probs
 
+from models import LowRankMixtureModel
+
 # color-blind friendly palette
 pastelBlue = "#0072B2"
 pastelRed = "#F5615C"
@@ -221,4 +223,18 @@ def make_gif(frame_folder, out_path, delete_frames=True):
             os.remove(f)
 
 
+def infiniteloop(dataloader):
+    while True:
+        for x, y in iter(dataloader):
+            yield x
+  
+
+def sample_base(base, N, image_shape, with_noise):
+    if type(base) == LowRankMixtureModel:
+        samples = base.sample(N, with_noise=with_noise)[0].view(
+            N, 3, image_shape[0], image_shape[1])
+    else:
+        samples = base.sample((N,)).view(
+            N, image_shape[-1], image_shape[0], image_shape[1])
         
+    return samples

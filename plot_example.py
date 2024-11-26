@@ -6,6 +6,8 @@ from torch.utils.data import DataLoader, Dataset
 
 from models import LowRankMixtureModel
 
+from sklearn.mixture import GaussianMixture
+
 pastelBlue = "#0072B2"
 pastelRed = "#F5615C"
 
@@ -118,9 +120,25 @@ plot_features = 5
 fig, axes = plt.subplots(plot_features, plot_features, figsize=(30, 15))
 plot_data(plot_features, X_train[:n_plot], axes[:, :], color=pastelBlue)
 plot_data(plot_features, X_samples[:n_plot], axes[:, :],  color=pastelRed)
-fig.text(0.3, 0.9, 'Truth Data', ha='left', va='center', fontsize=20)
-fig.text(0.7, 0.9, 'Learned Model', ha='center', va='center', fontsize=20)
 plt.savefig("model_eval.png")
 plt.show()
 
+# %%
+gmm = GaussianMixture(n_components=n_components, covariance_type='full', random_state=42)
+gmm.fit(X_train)
+
+gmm_samples, _ = gmm.sample(n_plot)
+
+fig, axes = plt.subplots(plot_features, plot_features, figsize=(30, 15))
+plot_data(plot_features, X_train[:n_plot], axes[:, :], color=pastelBlue)
+plot_data(plot_features, gmm_samples[:n_plot], axes[:, :],  color=pastelRed)
+plt.savefig("gmm_eval.png")
+plt.show()
+
+
+
+# %%
+gmm.score_samples(X_train).mean()
+
+model.log_prob(X_train).mean()
 # %%

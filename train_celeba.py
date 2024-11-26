@@ -12,7 +12,7 @@ from torch.distributions import MultivariateNormal
 from torch.nn.utils import clip_grad_norm_
 from torch.utils.data import DataLoader
 from torchdyn.core import NeuralODE
-from torchvision.datasets import CIFAR10
+from torchvision.datasets import CelebA
 import torchvision.transforms as transforms
 from torchvision.utils import save_image
 from tqdm import trange
@@ -23,25 +23,25 @@ from torchcfm.models.unet.unet import UNetModelWrapper
 
 # file imports
 from models import LowRankMixtureModel
-from utils import infiniteloop, sample_base
+from utils import CropTransform, infiniteloop, sample_base
 
 args = argparse.Namespace()
 args.base = "normal"
-args.model_file = "model_c_300_l_10_init_rnd_samples.pth"
+args.model_file = "model_c_250_l_10_init_rnd_samples.pth"
 args.num_channel = 64
 args.lr = 2e-4
 args.grad_clip = 1.0
 args.total_steps = 401
 args.warmup = 5
-args.batch_size = 128
+args.batch_size = 64
 args.save_step = 50
 
 # image shape [H, W, n_channels]
-image_shape = [32, 32, 3]
+image_shape = [64, 64, 3]
 n_features = np.prod(image_shape)
 
-model_dir = './models/cifar10/'
-figure_dir = './figures/cifar10/flow_{}/'.format(args.base)
+model_dir = './models/celeba/'
+figure_dir = './figures/celeba/flow_{}/'.format(args.base)
 os.makedirs(figure_dir, exist_ok=True)
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -73,18 +73,18 @@ def train():
     # read in dataset
     trans = transforms.Compose(
         [
-            transforms.RandomHorizontalFlip(),
-            transforms.ToTensor(),
-            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
+            CropTransform((25, 50, 25+128, 50+128)), 
+            transforms.Resize(image_shape[0]),
+            transforms.ToTensor(),  
         ]
     )
-    dataset = CIFAR10(root="./data",train=True,transform=trans, download=True)
+    dataset = CelebA(root='./data', split='train', transform=trans, download=True)
     dataloader = DataLoader(dataset, batch_size=args.batch_size,shuffle=True, drop_last=True)
     datalooper = infiniteloop(dataloader)
 
     # Define NODE model
     net_model = UNetModelWrapper(
-        dim=(3, 32, 32),
+        dim=(3, 64, 64),
         num_res_blocks=2,
         num_channels=args.num_channel,
         channel_mult=[1, 2, 2, 2],
@@ -135,8 +135,7 @@ def train():
                     )
                     #print(node_.vf.nfe)
                 net_model.train()
-                traj = traj[-1, :].view([-1, 3, 32, 32])
-                traj = traj / 2 + 0.5
+                traj = traj[-1, :].view([-1, 3, 64, 64])
                 save_image(traj, figure_dir + f"{args.base}_base_step_{step}.png", nrow=8)
 
 
