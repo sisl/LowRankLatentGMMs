@@ -4,6 +4,7 @@ from matplotlib.colors import Normalize
 import numpy as np
 import os
 from PIL import Image
+import sklearn.datasets as datasets
 import torch
 
 from torchcfm.utils import torch_wrapper
@@ -238,3 +239,55 @@ def sample_base(base, N, image_shape, with_noise):
             N, image_shape[-1], image_shape[0], image_shape[1])
         
     return samples
+
+
+def generate_data(target, rng=None, batch_size=256):
+    if rng is None:
+        rng = np.random.RandomState()
+
+    if target == "moons":
+        X = datasets.make_moons(n_samples=batch_size, noise=0.08)[0]
+        X = X.astype("float32")
+        X = X * 2 + np.array([-1, -0.2])
+        return X
+
+    elif target == "swissroll":
+        X = datasets.make_swiss_roll(n_samples=batch_size, noise=1.0)[0]
+        X = X.astype("float32")[:, [0, 2]]
+        X /= 5
+        return X
+
+    elif target == "8gaussians":
+        scale = 4.0
+        centers = [
+            (1, 0), 
+            (-1, 0), 
+            (0, 1), 
+            (0, -1), 
+            (1. / np.sqrt(2), 1. / np.sqrt(2)),
+            (1. / np.sqrt(2), -1. / np.sqrt(2)), 
+            (-1. / np.sqrt(2), 1. / np.sqrt(2)), 
+            (-1. / np.sqrt(2), -1. / np.sqrt(2))
+        ]
+        centers = [(scale * x, scale * y) for x, y in centers]
+
+        X = []
+        for i in range(batch_size):
+            point = np.random.randn(2) * 0.5
+            idx = np.random.randint(8)
+            center = centers[idx]
+            point[0] += center[0]
+            point[1] += center[1]
+            X.append(point)
+        X = np.array(X, dtype="float32")
+        X /= 1.414
+        return X
+
+    elif target == "checkerboard":
+        X1 = np.random.rand(batch_size) * 4 - 2
+        X2_ = np.random.rand(batch_size) - np.random.randint(0, 2, batch_size) * 2
+        X2 = X2_ + (np.floor(X1) % 2)
+        return np.concatenate([X1[:, None], X2[:, None]], 1) * 2
+
+    elif target == "pinwheel":
+        radial_std = 0.3

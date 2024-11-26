@@ -15,8 +15,7 @@ from torchcfm.models.models import MLP
 from torchcfm.utils import torch_wrapper
 
 from cnf import compute_log_probs
-from toy_data import generate_data
-from utils import make_gif, plot_trajectories, visualize_model
+from utils import make_gif, plot_trajectories, visualize_model, generate_data
 
 # color-blind friendly palette
 pastelBlue = "#0072B2"
