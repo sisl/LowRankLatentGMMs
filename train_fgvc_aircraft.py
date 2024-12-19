@@ -25,16 +25,21 @@ from torchcfm.models.unet.unet import UNetModelWrapper
 from models import LowRankMixtureModel
 from utils import infiniteloop, sample_base
 
-args = argparse.Namespace()
-args.base = "mppca"
+#args = argparse.Namespace()
+#args.base = "mppca"
+parser = argparse.ArgumentParser()
+parser.add_argument('--base', type=str, default='normal',
+                    choices=['normal', 'mppca'])
+args = parser.parse_args()
+
 args.model_file = "model_c_300_l_5_init_rnd_samples.pth"
 args.num_channel = 64
 args.lr = 2e-4
 args.grad_clip = 1.0
-args.total_steps = 401
-args.warmup = 5
+args.total_steps = 100000
+args.warmup = 500
 args.batch_size = 64
-args.save_step = 50
+args.save_step = 1000
 
 # image shape [H, W, n_channels]
 image_shape = [64, 64, 3]
@@ -89,7 +94,7 @@ def train():
         dim=(3, 64, 64),
         num_res_blocks=2,
         num_channels=args.num_channel,
-        channel_mult=[1, 2, 2, 2],
+        channel_mult=[1, 2, 3, 4],
         num_heads=4,
         num_head_channels=64,
         attention_resolutions="16",
@@ -114,7 +119,7 @@ def train():
         for step in pbar:
             optimizer.zero_grad()
             x1 = next(datalooper).to(device)
-            x0 = sample_base(base, args.batch_size, image_shape, True)
+            x0 = sample_base(base, args.batch_size, image_shape, False)
             x0 = x0.to(device)
             t, xt, ut = FM.sample_location_and_conditional_flow(x0, x1)
             vt = net_model(t, xt)
@@ -130,6 +135,7 @@ def train():
                 model_ = copy.deepcopy(net_model)
                 node_ = NeuralODE(model_, solver="dopri5", sensitivity="adjoint", atol=1e-4, rtol=1e-4)
                 with torch.no_grad():
+                    torch.manual_seed(0)
                     samples = sample_base(base=base, N=64, image_shape=image_shape, with_noise=False)
                     traj = node_.trajectory(
                         samples.to(device),
