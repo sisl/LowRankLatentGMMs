@@ -48,17 +48,17 @@ class CNF(torch.nn.Module):
         )  # `+ 0*x` has the only purpose of connecting x[:, 0] to autograd graph
     
 
-def compute_log_probs(model, x, t, device, base):
+def compute_log_probs(model, x, t, device, base, trace_estimator):
     # Return 
-    cnf = DEFunc(CNF(model))
+    cnf = DEFunc(CNF(model, trace_estimator=trace_estimator))
     nde = NeuralODE(cnf, solver="euler", sensitivity="adjoint")
     cnf_model = torch.nn.Sequential(Augmenter(augment_idx=1, augment_dims=1), nde)
     with torch.no_grad():
         aug_traj = (
             cnf_model[1].to(device).trajectory(
-                Augmenter(1, 1)(x).to(device), t_span=torch.linspace(t, 0, 101).to(device),
+                Augmenter(1, 1)(x).to(device), t_span=torch.linspace(t, 0, 201).to(device),
             )
-        )[-1].cpu()
+        )[-1]
         log_probs = base.log_prob(aug_traj[:, 1:]) - aug_traj[:, 0]
 
     return log_probs

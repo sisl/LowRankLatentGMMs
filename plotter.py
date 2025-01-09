@@ -1,4 +1,5 @@
 #%%
+# this is to verify sampling with / without noise, I think
 # Inspired from https://github.com/w86763777/pytorch-ddpm/tree/master.
 
 # Authors: Kilian Fatras
@@ -30,7 +31,7 @@ from utils import CropTransform, infiniteloop, sample_base, samples_to_mosaic
 
 args = argparse.Namespace()
 args.base = "mppca"
-args.model_file = "model_c_250_l_10_init_rnd_samples.pth"
+args.model_file = "model_c_250_l_10.pth"
 args.num_channel = 64
 args.lr = 2e-4
 args.grad_clip = 1.0
@@ -40,7 +41,7 @@ args.batch_size = 64
 args.save_step = 2000
 
 # image shape [H, W, n_channels]
-image_shape = [64, 64, 3]
+image_shape = [32, 32, 3]
 n_features = np.prod(image_shape)
 
 model_dir = './models/celeba/'
@@ -72,7 +73,7 @@ print('Generating random samples...')
 rnd_samples, _ = base.sample(100, with_noise=False)
 mosaic = samples_to_mosaic(rnd_samples, image_shape=image_shape)
 image = Image.fromarray((255 * mosaic).astype(np.uint8))
-image.save('samples.png')
+image.save('samples1.png')
 
 
 

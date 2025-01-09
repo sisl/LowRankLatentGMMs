@@ -233,7 +233,7 @@ def infiniteloop(dataloader):
 def sample_base(base, N, image_shape, with_noise):
     if type(base) == LowRankMixtureModel:
         samples = base.sample(N, with_noise=with_noise)[0].view(
-            N, 3, image_shape[0], image_shape[1])
+            N, image_shape[-1], image_shape[0], image_shape[1])
     else:
         samples = base.sample((N,)).view(
             N, image_shape[-1], image_shape[0], image_shape[1])

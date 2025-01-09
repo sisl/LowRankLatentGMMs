@@ -7,23 +7,16 @@ from torch.utils.data import DataLoader, RandomSampler
 
 class LowRankMixtureModel(torch.nn.Module):
     """
-    Initialize a probabilistic model representing either a Mixture of Factor 
-    Analyzers (MFA) [1] or a Mixture of Probabilistic Principal Component 
-    Analyzers (MPPCA) [2]. These models constrain the covariance matrices of a 
-    Gaussian mixture model to be low-rank and diagonal. For MFA, the noise 
-    matrix is assumed to be diagonal; MPPCA assumes that the noise matrix is
-    both diagonal and isotropic.
+    Initialize a probabilistic model representing a Mixture of Probabilistic 
+    Principal Component Analyzers (MPPCA) [1]. This models constrain the 
+    covariance matrices of a Gaussian mixture model to be low-rank and diagonal.
     
-    Original publications:
-    [1] Ghahramani, Z., & Hinton, G. E. (1996). The EM Algorithm for Mixtures of
-        Factor Analyzers (Vol. 60). Technical Report CRG-TR-96-1, University of 
-        Toronto.
-
-    [2] Tipping, M. E., & Bishop, C. M. (1999). Mixtures of Probabilistic 
+    Original publication:
+    [1] Tipping, M. E., & Bishop, C. M. (1999). Mixtures of Probabilistic 
         Principal Component Analyzers. Neural Computation, 11(2), 443-482.
 
     The implementation is based on the open-source code from
-    [3] Richardson, E., & Weiss, Y. (2018). On GANs and GMMs. Advances in 
+    [2] Richardson, E., & Weiss, Y. (2018). On GANs and GMMs. Advances in 
         Neural Information Processing Systems, 31.
         
     Problem Parameters:
@@ -163,12 +156,12 @@ class LowRankMixtureModel(torch.nn.Module):
         sample_lls = torch.logsumexp(self.per_component_log_likelihood(x, sampled_features), dim=1)
 
         return sample_lls
-    
+
 
     def log_prob(self, x):
         x = x.reshape(x.shape[0], -1)
         return self.per_sample_log_likelihood(x)
-
+    
 
     def responsibilities(self, x, sampled_features=None):
         """
@@ -225,7 +218,7 @@ class LowRankMixtureModel(torch.nn.Module):
 
         V = V.T.to(self.mu.device)
         S = S.to(self.mu.device)
-        # All equations and appendices reference Tipping and Bishop (1999) [2]
+        # All equations and appendices reference Tipping and Bishop (1999) [1]
         # (3.13)
         sigma2 = torch.sum(S[n_factors:]**2.0)/((x.shape[0]-1) * (x.shape[1]-n_factors))
         # (3.12)
@@ -280,7 +273,7 @@ class LowRankMixtureModel(torch.nn.Module):
         """
         Estimate maximum-likelihood MPPCA paramters for the complete dataset 
         using the Expectation Maximization algorithm from Tipping and Bishop 
-        (1999) [2].
+        (1999) [1].
 
         Parameters:
         x (torch.Tensor): [n x d] tensor of input data
@@ -302,7 +295,7 @@ class LowRankMixtureModel(torch.nn.Module):
                              feature_sampling=feature_sampling)
         print('Initial log-likelihood = {:.4f}'.format(torch.mean(self.per_sample_log_likelihood(x)).item()))
 
-        # All equations and appendices reference Tipping and Bishop (1999) [2]
+        # All equations and appendices reference Tipping and Bishop (1999) [1]
         def per_component_m_step(i):
             # (C.8)
             mui_new = torch.sum(r[:, [i]] * x, dim=0) / r_sum[i]
@@ -355,7 +348,7 @@ class LowRankMixtureModel(torch.nn.Module):
         """
         Estimate maximum-likelihood MPPCA paramters for the complete dataset 
         using the Expectation Maximization algorithm from Tipping and Bishop 
-        (1999) [2]. This is a memory-efficient batched implementation for large 
+        (1999) [1]. This is a memory-efficient batched implementation for large 
         datasets that do not fit in memory:
         1) E step:
             For all mini-batches:

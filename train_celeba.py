@@ -33,17 +33,17 @@ parser.add_argument('--base', type=str, default='normal',
                     choices=['normal', 'mppca'])
 args = parser.parse_args()
 
-args.model_file = "model_c_250_l_10_init_rnd_samples.pth"
+args.model_file = "model_c_250_l_10.pth"
 args.num_channel = 64
 args.lr = 2e-4
 args.grad_clip = 1.0
 args.total_steps = 200000
 args.warmup = 1000
-args.batch_size = 64
+args.batch_size = 128
 args.save_step = 2000
 
 # image shape [H, W, n_channels]
-image_shape = [64, 64, 3]
+image_shape = [32, 32, 3]
 n_features = np.prod(image_shape)
 
 model_dir = './models/celeba/'
@@ -85,12 +85,12 @@ def train():
         ]
     )
     dataset = CelebA(root='./data', split='train', transform=trans, download=True)
-    dataloader = DataLoader(dataset, batch_size=args.batch_size,shuffle=True, drop_last=True)
+    dataloader = DataLoader(dataset, batch_size=args.batch_size, shuffle=True, drop_last=True)
     datalooper = infiniteloop(dataloader)
 
     # Define NODE model
     net_model = UNetModelWrapper(
-        dim=(3, 64, 64),
+        dim=(3, 32, 32),
         num_res_blocks=2,
         num_channels=args.num_channel,
         channel_mult=[1, 2, 3, 4],

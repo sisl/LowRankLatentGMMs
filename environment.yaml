@@ -6,7 +6,8 @@ dependencies:
   - python=3.11
   - cudatoolkit
   - matplotlib
-  - numpy
+  - numpy<2.0.0
+  - pandas<2.0
   - pip
   - pytorch
   - torchvision

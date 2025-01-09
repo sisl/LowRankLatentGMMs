@@ -1,15 +1,16 @@
 import argparse
+from matplotlib import pyplot as plt
+import numpy as np
 import os
+from PIL import Image
+import time
 import torch
 from torchvision.datasets import CelebA, MNIST, CIFAR10, FGVCAircraft
 import torchvision.transforms as transforms
-import numpy as np
+
 from models import LowRankMixtureModel
 from utils import CropTransform, ReshapeTransform, samples_to_mosaic, visualize_mixture
-from matplotlib import pyplot as plt
-import time
 
-from PIL import Image
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--dataset', type=str, default='mnist',
@@ -23,7 +24,7 @@ args = parser.parse_args()
 print('Preparing dataset and parameters for', args.dataset,'...')
 
 if args.dataset == 'celeba':
-    image_shape = [64, 64, 3]
+    image_shape = [32, 32, 3]
     n_components = args.n_components
     n_factors = args.n_factors
     batch_size = 1000
@@ -35,7 +36,7 @@ if args.dataset == 'celeba':
             CropTransform((25, 50, 25+128, 50+128)), 
             transforms.Resize(image_shape[0]),
             transforms.ToTensor(),  
-            ReshapeTransform([-1])
+            #ReshapeTransform([-1])
         ]
     )
     train_set = CelebA(root='./data', split='train', transform=trans, download=True)
