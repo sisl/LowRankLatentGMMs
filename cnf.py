@@ -65,9 +65,10 @@ def log_probs(model, x, t, device, base, trace_estimator):
     return log_probs
 
 
-def cnf_test_metrics(model, x, device, base, trace_estimator):
-    cnf = DEFunc(CNF(model, trace_estimator=trace_estimator))
-    nde = NeuralODE(cnf, solver="dopri5", sensitivity="adjoint", atol=1e-4, rtol=1e-4)
+def cnf_test_metrics(model, x, device, base):
+    cnf = DEFunc(CNF(model, trace_estimator=autograd_trace))
+    #nde = NeuralODE(cnf, solver="dopri5", sensitivity="adjoint", atol=1e-4, rtol=1e-4)
+    nde = NeuralODE(cnf, solver="euler", sensitivity="adjoint")
     cnf_model = torch.nn.Sequential(Augmenter(augment_idx=1, augment_dims=1), nde)
     with torch.no_grad():
         aug_traj = (

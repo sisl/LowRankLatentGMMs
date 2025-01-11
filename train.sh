@@ -9,8 +9,23 @@
 #python3 train_celeba.py --base "normal"
 #python3 train_fgvc_aircraft.py --base "normal"
 
-python3 uci_test.py --dataset "POWER"
-python3 uci_test.py --dataset "GAS"
-python3 uci_test.py --dataset "HEPMASS"
-python3 uci_test.py --dataset "MINIBOONE"
-python3 uci_test.py --dataset "BSDS300"
+#python3 uci_test.py --dataset "POWER"
+#python3 uci_test.py --dataset "GAS"
+#python3 uci_test.py --dataset "HEPMASS"
+#python3 uci_test.py --dataset "MINIBOONE"
+#python3 uci_test.py --dataset "BSDS300"
+
+python3 train_uci.py --flow "otcfm" --base 'mppca' --dataset "power"
+#python3 train_uci.py --flow "otcfm" --base 'normal' --dataset "power"
+
+#python3 train_uci.py --flow "otcfm" --base 'mppca' --dataset "gas"
+#python3 train_uci.py --flow "otcfm" --base 'normal' --dataset "gas"
+
+#python3 train_uci.py --flow "otcfm" --base 'mppca' --dataset "hepmass"
+#python3 train_uci.py --flow "otcfm" --base 'normal' --dataset "hepmass"
+
+#python3 train_uci.py --flow "otcfm" --base 'mppca' --dataset "miniboone"
+#python3 train_uci.py --flow "otcfm" --base 'normal' --dataset "miniboone"
+
+#python3 train_uci.py --flow "otcfm" --base 'mppca' --dataset "bsds300"
+#python3 train_uci.py --flow "otcfm" --base 'normal' --dataset "bsds300"

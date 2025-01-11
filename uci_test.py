@@ -109,7 +109,7 @@ def plot_data(n_features, X, axes, color=None):
 model_dir = './models/' + dataset_name
 os.makedirs(model_dir, exist_ok=True)
 
-data_dir = "./data/UCI/"
+data_dir = "./data/uci/"
 data = torch.tensor(np.load(data_dir + dataset_name + ".npy"), dtype=torch.float32)
 
 # Create the dataset
