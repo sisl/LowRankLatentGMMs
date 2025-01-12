@@ -22,8 +22,8 @@ from torchcfm.conditional_flow_matching import ExactOptimalTransportConditionalF
 from torchcfm.models.unet.unet import UNetModelWrapper
 
 # file imports
-from models import LowRankMixtureModel
-from utils import CropTransform, infiniteloop, sample_base
+from models.mppca import LowRankMixtureModel
+from utils.utils import CropTransform, infiniteloop, sample_base
 
 #args = argparse.Namespace()
 #args.base = "mppca"
@@ -37,25 +37,28 @@ args.model_file = "model_c_250_l_10.pth"
 args.num_channel = 64
 args.lr = 2e-4
 args.grad_clip = 1.0
-args.total_steps = 200000
+args.total_steps = 1000
 args.warmup = 1000
 args.batch_size = 128
-args.save_step = 2000
+args.save_step = 200
 
 # image shape [H, W, n_channels]
 image_shape = [32, 32, 3]
 n_features = np.prod(image_shape)
 
-model_dir = './models/celeba/'
-figure_dir = './figures/celeba/flow_{}/'.format(args.base)
-os.makedirs(figure_dir, exist_ok=True)
+# create results directory
+results_dir = "./results/celeba/otcfm-{}/".format(args.base)
+os.makedirs(results_dir, exist_ok=True)
+
+#figure_dir = './figures/celeba/flow_{}/'.format(args.base)
+#os.makedirs(figure_dir, exist_ok=True)
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # define base distribution
 if args.base == "mppca":
     print('Loading pre-trained MPPCA model...')
-    model_dict = torch.load(model_dir + args.model_file, weights_only=True)
+    model_dict = torch.load(results_dir + args.model_file, weights_only=True)
     n_components, n_features, n_factors = model_dict['W'].shape
     base = LowRankMixtureModel(
         n_components=n_components,
@@ -128,7 +131,7 @@ def train():
             optimizer.step()
             scheduler.step()
 
-            # sample and Saving the weights
+            # sample and saving the weights
             if args.save_step > 0 and step % args.save_step == 0:
                 net_model.eval()
                 model_ = copy.deepcopy(net_model)
@@ -142,9 +145,15 @@ def train():
                     )
                     #print(node_.vf.nfe)
                 net_model.train()
-                traj = traj[-1, :].view([-1, 3, 64, 64])
-                save_image(traj, figure_dir + f"{args.base}_base_step_{step}.png", nrow=8)
+                traj = traj[-1, :].view([-1, 3, 32, 32])
+                save_image(traj, results_dir + f"{args.base}_base_step_{step}.png", nrow=8)
 
 
+        torch.save(
+            {
+                "net_model": net_model.state_dict()
+            },
+            results_dir + "celeba_model.pt",
+        )
 if __name__ == "__main__":
     train()

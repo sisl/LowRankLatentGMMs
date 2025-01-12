@@ -9,9 +9,9 @@ import torch
 
 from torchcfm.utils import torch_wrapper
 from torchdyn.core import DEFunc, NeuralODE
-from cnf import compute_log_probs
+#from cnf import compute_log_probs
 
-from models import LowRankMixtureModel
+from models.mppca import LowRankMixtureModel
 
 # color-blind friendly palette
 pastelBlue = "#0072B2"
@@ -107,6 +107,7 @@ def plot_trajectories(traj):
     plt.gca().set_aspect('equal')
     plt.show()
 
+'''
 def visualize_model(model, base, title):
     w = 4
     points = 200j
@@ -177,6 +178,7 @@ def visualize_model(model, base, title):
         os.makedirs("figures/trajectory/{}/".format(title), exist_ok=True)
         plt.savefig("figures/trajectory/{}/{:0.2f}.png".format(title, t), dpi=100)
         plt.close()
+'''
 
 def plot_pdf(distribution, ax):
     x = torch.linspace(-2, 2, 500)
@@ -291,3 +293,27 @@ def generate_data(target, rng=None, batch_size=256):
 
     elif target == "pinwheel":
         radial_std = 0.3
+        
+        
+def plot_data(n_features, X, axes, color=None):
+    """
+    Plot samples from an MPPCA model.
+
+    Parameters:
+    n_features (int): number of input dimensions (alias: d)
+    X (torch.Tensor): [n x d] tensor of data samples
+    axes (np.array): array of matplotlib Axes objects
+    color (str): hex color code
+    """
+    for i in range(n_features):
+        for j in range(n_features):
+            axes[i, j].set_xticks([])
+            axes[i, j].set_yticks([])
+            axes[i, j].set_box_aspect(1)
+            if i == j:
+                axes[i, j].text(0.5, 0.5, f'Dim {i+1}', ha='center', va='center', fontsize=12)
+            else:
+                axes[i, j].scatter(X[:, j], X[:, i], alpha=0.5, color=color)
+
+    plt.subplots_adjust(wspace=0.1, hspace=0.1)
+

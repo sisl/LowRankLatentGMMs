@@ -22,11 +22,13 @@ from torchcfm.conditional_flow_matching import (
 from torchcfm.models.models import MLP
 
 # file imports
-from models import LowRankMixtureModel
-from cnf_wrapper import cnf_test_metrics, torch_wrapper
-from uci_dataset import create_data_loaders, load_config
-from early_stopping import EarlyStopping
-from mmd import mmd
+from evaluation.mmd import mmd
+from evaluation.cnf_metrics import cnf_test_metrics
+from models.mppca import LowRankMixtureModel
+from models.cnf import cnf_test_metrics, torch_wrapper
+from utils.uci_dataset import create_data_loaders, load_config
+from utils.early_stopping import EarlyStopping
+from utils.utils import plot_data
 
 
 parser = argparse.ArgumentParser()
@@ -36,7 +38,7 @@ parser.add_argument("--flow", type=str, default="cfm",
                     choices=["cfm", "otcfm"])
 parser.add_argument("--dataset", type=str, default="power",
                     choices=["power", "gas", "hepmass", "miniboone", "bsds300"])
-parser.add_argument("--epochs", type=int, default=1)
+parser.add_argument("--epochs", type=int, default=100)
 parser.add_argument("--patience", type=int, default=5)
 args = parser.parse_args()
 
@@ -48,8 +50,7 @@ device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cp
 model_dir = "./results/{}/{}".format(args.dataset, args.flow + "-" + args.base)
 os.makedirs(model_dir, exist_ok=True)
 
-# make sure it overwrites file
-# Configure logging
+# set up logger
 logging.basicConfig(
     level=logging.INFO,
     format="%(message)s",
@@ -138,29 +139,6 @@ def compute_loss(x0, x1, flow_matcher, model):
     return loss
 
 
-def plot_data(n_features, X, axes, color=None):
-    """
-    Plot samples from an MPPCA model.
-
-    Parameters:
-    n_features (int): number of input dimensions (alias: d)
-    X (torch.Tensor): [n x d] tensor of data samples
-    axes (np.array): array of matplotlib Axes objects
-    color (str): hex color code
-    """
-    for i in range(n_features):
-        for j in range(n_features):
-            axes[i, j].set_xticks([])
-            axes[i, j].set_yticks([])
-            axes[i, j].set_box_aspect(1)
-            if i == j:
-                axes[i, j].text(0.5, 0.5, f'Dim {i+1}', ha='center', va='center', fontsize=12)
-            else:
-                axes[i, j].scatter(X[:, j], X[:, i], alpha=0.5, color=color)
-
-    plt.subplots_adjust(wspace=0.1, hspace=0.1)
-
-
 #*******************************************************************************
 # set up models and optimizers
 #*******************************************************************************
@@ -183,6 +161,7 @@ total_steps = args.epochs * len(train_loader)
 scheduler = CosineAnnealingLR(optimizer, total_steps, 0)
 early_stopping = EarlyStopping(patience=args.patience, delta=1e-4, verbose=True)
 logger.info(str(optimizer))
+
 
 #*******************************************************************************
 # construct base distribution
@@ -240,7 +219,7 @@ for epoch in range(args.epochs):
     model.eval()
     val_loss = 0
     with torch.no_grad():
-        for batch in tqdm(val_loader):
+        for batch in tqdm(val_loader, desc="Computing validation loss"):
             x0 = sample_base(base=base_distribution, N=batch_size).to(device)
             x1 = batch.to(device)
             val_loss += compute_loss(x0, x1, flow_matcher, model).item()
@@ -257,6 +236,7 @@ for epoch in range(args.epochs):
 end = time.time()
 
 logger.info("Total training time: {:0.2f} s".format(end - start))
+logger.info("--------------------")
 
 
 #*******************************************************************************
@@ -272,48 +252,40 @@ node = NeuralODE(
     rtol=1e-4
 )
 
-
 avg_lps = []
 nfes = []
-mmds = []
-for batch in tqdm(test_loader):
+for batch in tqdm(test_loader, desc="Computing test metrics"):
     test_samples = batch.to(device)
     avg_lp, nfe = cnf_test_metrics(model, test_samples, device, base_distribution)
     avg_lps.append(avg_lp)
     nfes.append(nfe)
 
-
+# read in all test data for maximum mean discrepancy calculation
 test_data = []
 for batch in test_loader:
     test_data.append(batch)
 test_data = torch.cat(test_data, dim=0)
 
-base_samples = sample_base(base=base_distribution, N=1e5).to(device)
+# generate samples from the learned model
+base_samples = sample_base(base=base_distribution, N=int(1e5)).to(device)
 with torch.no_grad():
     model_samples = node.trajectory(
         base_samples,
         t_span=torch.linspace(0, 1, 2, device=device),
     )[-1].cpu()
-maximum_mean_discrepancy = mmd(model_samples.cpu(), test_data)
 
+# compute maximum mean discrepancy
+maximum_mean_discrepancy = mmd(model_samples.cpu(), test_data)
 
 std_ll, mean_ll = torch.std_mean(torch.tensor(avg_lps))
 std_nfe, mean_nfe = torch.std_mean(torch.tensor(nfes))
-
 
 logger.info(f"test log-likelihood: {mean_ll:.4f} ± {std_ll:.4f}")
 logger.info(f"test NFE: {mean_nfe:.4f} ± {std_nfe:.4f}")
 logger.info(f"test MMD: {maximum_mean_discrepancy:.6f}")
 
-
-samples = sample_base(base=base_distribution, N=500).to(device)
-with torch.no_grad():
-    traj = node.trajectory(
-        samples.to(device),
-        t_span=torch.linspace(0, 1, 2, device=device),
-    )[-1].cpu()
-
+# plot samples vs test data
 fig, axes = plt.subplots(5, 5, figsize=(15, 15))
-plot_data(5, data[:500], axes[:, :], color="b")
-plot_data(5, traj[:500], axes[:, :], color="r")
+plot_data(5, test_data[:500], axes[:, :], color="b")
+plot_data(5, model_samples[:500], axes[:, :], color="r")
 plt.savefig(os.path.join(model_dir, "data_vs_samples.png"))
