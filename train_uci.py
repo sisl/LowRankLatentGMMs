@@ -38,8 +38,8 @@ parser.add_argument("--flow", type=str, default="cfm",
                     choices=["cfm", "otcfm"])
 parser.add_argument("--dataset", type=str, default="power",
                     choices=["power", "gas", "hepmass", "miniboone", "bsds300"])
-parser.add_argument("--epochs", type=int, default=100)
-parser.add_argument("--patience", type=int, default=5)
+parser.add_argument("--epochs", type=int, default=200)
+parser.add_argument("--patience", type=int, default=10)
 args = parser.parse_args()
 
 
@@ -75,7 +75,6 @@ train_split = hyperparameters["train_split"]
 val_split = hyperparameters["val_split"]
 test_split = hyperparameters["test_split"]
 hidden_units = hyperparameters["hidden_units"]
-
 
 
 #*******************************************************************************
@@ -158,7 +157,7 @@ logger.info("Number of model parameters: {}".format(model_params))
 # define training objects
 optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate, weight_decay=1e-6)
 total_steps = args.epochs * len(train_loader)
-scheduler = CosineAnnealingLR(optimizer, total_steps, 0)
+scheduler = CosineAnnealingLR(optimizer, total_steps, eta_min=1e-6)
 early_stopping = EarlyStopping(patience=args.patience, delta=1e-4, verbose=True)
 logger.info(str(optimizer))
 
@@ -181,13 +180,15 @@ elif args.base == "mppca":
         init_method="kmeans"
     ).to(device)
     # count MPPCA parameters
-    mppca_params = int(n_features * n_factors + 1 - n_factors*(n_factors-1)/2)
+    mppca_params = int(n_components*(n_features*n_factors+n_features+1)+(n_components-1))
     logger.info("Number of MPPCA parameters: {}".format(mppca_params))
     mppca_lp = base_distribution.fit(
         x=data, 
         max_iterations=em_iters, 
         feature_sampling=False
     )
+    end = time.time()
+    logger.info("MPPCA fitting time: {:0.2f} s".format(end - start))
 else:
     raise ValueError
 
@@ -195,7 +196,9 @@ else:
 #*******************************************************************************
 # main training loop
 #*******************************************************************************
+torch.manual_seed(42)
 logger.info("--------------------")
+#lrs = []
 for epoch in range(args.epochs):
     logger.info(f"Starting epoch {epoch + 1}/{args.epochs}")
     model.train()
@@ -205,7 +208,7 @@ for epoch in range(args.epochs):
         x1 = batch.to(device)
         loss = compute_loss(x0, x1, flow_matcher, model)
         loss.backward()
-        clip_grad_norm_(model.parameters(), 1.)
+        clip_grad_norm_(model.parameters(), 5.)
         optimizer.step()
         scheduler.step()
 
@@ -237,7 +240,6 @@ end = time.time()
 
 logger.info("Total training time: {:0.2f} s".format(end - start))
 logger.info("--------------------")
-
 
 #*******************************************************************************
 # model evaluation

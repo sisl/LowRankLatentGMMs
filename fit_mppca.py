@@ -8,8 +8,8 @@ import torch
 from torchvision.datasets import CelebA, MNIST, CIFAR10, FGVCAircraft
 import torchvision.transforms as transforms
 
-from models import LowRankMixtureModel
-from utils import CropTransform, ReshapeTransform, samples_to_mosaic, visualize_mixture
+from models.mppca import LowRankMixtureModel
+from utils.utils import CropTransform, ReshapeTransform, samples_to_mosaic, visualize_mixture
 
 
 parser = argparse.ArgumentParser()
@@ -36,7 +36,7 @@ if args.dataset == 'celeba':
             CropTransform((25, 50, 25+128, 50+128)), 
             transforms.Resize(image_shape[0]),
             transforms.ToTensor(),  
-            #ReshapeTransform([-1])
+            ReshapeTransform([-1])
         ]
     )
     train_set = CelebA(root='./data', split='train', transform=trans, download=True)
@@ -63,7 +63,7 @@ elif args.dataset == 'cifar10':
     test_set = CIFAR10(root='./data', train=False, transform=trans, download=True)
 
 elif args.dataset == "fgvc-aircraft":
-    image_shape = [64, 64, 3]
+    image_shape = [32, 32, 3]
     n_components = args.n_components
     n_factors = args.n_factors
     batch_size = 200
@@ -75,7 +75,7 @@ elif args.dataset == "fgvc-aircraft":
     std = [0.229, 0.224, 0.225]
     trans = transforms.Compose(
         [
-            transforms.Resize((64, 64)),
+            transforms.Resize((32, 32)),
             transforms.Resize(image_shape[0]),
             transforms.ToTensor(),
             transforms.Normalize(mean, std),
@@ -108,10 +108,11 @@ else:
 
 device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 
-model_dir = './models/' + args.dataset
+model_dir = './results/' + args.dataset
 os.makedirs(model_dir, exist_ok=True)
-figures_dir = './figures/' + args.dataset
-os.makedirs(figures_dir, exist_ok=True)
+figures_dir = model_dir
+#figures_dir = './results/' + args.dataset
+#os.makedirs(figures_dir, exist_ok=True)
 model_name = 'c_{}_l_{}'.format(n_components, n_factors)
 
 print('Defining the MFA model...')
