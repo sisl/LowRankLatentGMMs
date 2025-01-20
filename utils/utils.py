@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 from matplotlib.colors import Normalize
 import numpy as np
 import os
+import json
 from PIL import Image
 import sklearn.datasets as datasets
 import torch
@@ -317,3 +318,27 @@ def plot_data(n_features, X, axes, color=None):
 
     plt.subplots_adjust(wspace=0.1, hspace=0.1)
 
+
+# Example usage:
+# file_path = "path_to_your_dataset.npy"
+# batch_size = 64
+# train_loader, val_loader, test_loader = create_data_loaders(file_path, batch_size)
+
+def load_config(config_file, dataset_name):
+    """
+    Loads dataset-specific configuration from a JSON file.
+
+    Args:
+        config_file (str): Path to the JSON configuration file.
+        dataset_name (str): Name of the dataset.
+
+    Returns:
+        dict: Hyperparameters for the specified dataset.
+    """
+    with open(config_file, "r") as file:
+        config = json.load(file)
+
+    if dataset_name not in config:
+        raise ValueError(f"Dataset '{dataset_name}' not found in configuration file.")
+
+    return config[dataset_name]

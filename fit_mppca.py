@@ -78,7 +78,7 @@ elif args.dataset == "fgvc-aircraft":
             transforms.Resize((32, 32)),
             transforms.Resize(image_shape[0]),
             transforms.ToTensor(),
-            transforms.Normalize(mean, std),
+            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
             ReshapeTransform([-1])
         ]
     )

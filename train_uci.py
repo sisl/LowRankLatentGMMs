@@ -26,9 +26,9 @@ from evaluation.mmd import mmd
 from evaluation.cnf_metrics import cnf_test_metrics
 from models.mppca import LowRankMixtureModel
 from models.cnf import cnf_test_metrics, torch_wrapper
-from utils.uci_dataset import create_data_loaders, load_config
+from utils.datasets import create_data_loaders
 from utils.early_stopping import EarlyStopping
-from utils.utils import plot_data
+from utils.utils import plot_data, load_config
 
 
 parser = argparse.ArgumentParser()
@@ -208,7 +208,7 @@ for epoch in range(args.epochs):
         x1 = batch.to(device)
         loss = compute_loss(x0, x1, flow_matcher, model)
         loss.backward()
-        clip_grad_norm_(model.parameters(), 5.)
+        clip_grad_norm_(model.parameters(), 1.)
         optimizer.step()
         scheduler.step()
 
@@ -240,6 +240,8 @@ end = time.time()
 
 logger.info("Total training time: {:0.2f} s".format(end - start))
 logger.info("--------------------")
+
+torch.save(model.state_dict(), os.path.join(model_dir, 'model.pt'))
 
 #*******************************************************************************
 # model evaluation
@@ -284,7 +286,7 @@ std_nfe, mean_nfe = torch.std_mean(torch.tensor(nfes))
 
 logger.info(f"test log-likelihood: {mean_ll:.4f} ± {std_ll:.4f}")
 logger.info(f"test NFE: {mean_nfe:.4f} ± {std_nfe:.4f}")
-logger.info(f"test MMD: {maximum_mean_discrepancy:.6f}")
+logger.info(f"test MMD: {maximum_mean_discrepancy:.8f}")
 
 # plot samples vs test data
 fig, axes = plt.subplots(5, 5, figsize=(15, 15))

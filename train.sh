@@ -15,10 +15,10 @@
 #python3 uci_test.py --dataset "MINIBOONE"
 #python3 uci_test.py --dataset "BSDS300"
 
-#python3 train_uci.py --flow "cfm" --base 'mppca' --dataset "power"
-#python3 train_uci.py --flow "cfm" --base 'normal' --dataset "power"
-#python3 train_uci.py --flow "otcfm" --base 'mppca' --dataset "power"
-#python3 train_uci.py --flow "otcfm" --base 'normal' --dataset "power"
+python3 train_uci.py --flow "cfm" --base 'mppca' --dataset "power"
+python3 train_uci.py --flow "cfm" --base 'normal' --dataset "power"
+python3 train_uci.py --flow "otcfm" --base 'mppca' --dataset "power"
+python3 train_uci.py --flow "otcfm" --base 'normal' --dataset "power"
 
 python3 train_uci.py --flow "cfm" --base 'mppca' --dataset "gas"
 python3 train_uci.py --flow "cfm" --base 'normal' --dataset "gas"
