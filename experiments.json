@@ -61,16 +61,13 @@
     },
     "celeba": {
         "image_shape":      [64, 64, 3],
-        "n_components":     100,
+        "n_components":     50,
         "n_factors":        10,
         "em_iters":         10,
         "batch_size":       128,
         "em_batch_size":    1000,
         "learning_rate":    5e-4,
-        "num_channels":     64,
-        "train_split":      "train",
-        "val_split":        "valid",
-        "test_split":       "test"
+        "num_channels":     64
     },
     "fgvc-aircraft": {
         "image_shape":      [64, 64, 3],
@@ -80,9 +77,6 @@
         "batch_size":       64,
         "em_batch_size":    200,
         "learning_rate":    5e-4,
-        "num_channels":     64,
-        "train_split":      "trainval",
-        "val_split":        "test",
-        "test_split":       "test"
+        "num_channels":     64
     }
 }

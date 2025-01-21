@@ -1,6 +1,8 @@
 import numpy as np
 import torch
 from torch.utils.data import Dataset, DataLoader, random_split
+import random
+from torchvision.datasets import ImageFolder
 
 from torchvision.datasets import CelebA, FGVCAircraft
 import torchvision.transforms as transforms
@@ -109,18 +111,18 @@ class ImageDataset:
         return mppca_transforms
 
 
-    def get_mppca_dataset(self, split='train'):
+    def get_mppca_dataset(self):
         if self.dataset == "celeba":
             dataset = CelebA(
                 root=self.root_dir,
-                split=split,
+                split="train",
                 transform=self.mppca_transforms,
                 download=True
             )
         elif self.dataset == "fgvc-aircraft":
             dataset = FGVCAircraft(
                 root=self.root_dir,
-                split=split,
+                split="trainval",
                 transform=self.mppca_transforms,
                 download=True
             )
@@ -129,7 +131,43 @@ class ImageDataset:
         
         return dataset
     
+    def get_dataloaders(self):
+        cfm_transforms = transforms.Compose(self.mppca_transforms.transforms[:-1])
 
+        if self.dataset == "celeba":
+            train_dataset = CelebA(root=self.root_dir, split="train",
+                transform=cfm_transforms, download=True)
+            val_dataset = CelebA(root=self.root_dir, split="valid",
+                transform=cfm_transforms, download=True)  
+            test_dataset = CelebA(root=self.root_dir, split="test",
+                transform=cfm_transforms, download=True)  
+            
+        elif self.dataset == "fgvc-aircraft":
+            train_dataset = FGVCAircraft(root=self.root_dir, split="trainval",
+                transform=cfm_transforms, download=True)
+            
+            temp_dataset = FGVCAircraft(root=self.root_dir, split="test",
+                transform=cfm_transforms, download=True)
+
+            val_size = int(0.5 * len(temp_dataset))  # 50% for training
+            test_size = len(temp_dataset) - val_size  # 50% for validation
+
+            val_dataset, test_dataset = random_split(temp_dataset, [val_size, test_size], torch.Generator().manual_seed(42))
+
+        else:
+            raise ValueError(f"Dataset '{self.dataset}' is invalid.")
+        
+
+        train_loader = DataLoader(train_dataset, batch_size=self.batch_size,
+            shuffle=True, drop_last=True)
+        val_loader = DataLoader(val_dataset, batch_size=self.batch_size,
+            shuffle=True, drop_last=True)
+        test_loader = DataLoader(test_dataset, batch_size=self.batch_size,
+            shuffle=True, drop_last=True)
+        
+        return train_loader, val_loader, test_loader
+    
+    '''
     def get_dataloaders(self, split='train'):
         cfm_transforms = transforms.Compose(self.mppca_transforms.transforms[:-1])
 
@@ -158,5 +196,5 @@ class ImageDataset:
         )
 
         return dataloader
-    
+    '''
 

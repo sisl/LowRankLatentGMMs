@@ -43,9 +43,10 @@ parser.add_argument("--flow", type=str, default="cfm",
 parser.add_argument("--dataset", type=str, default="celeba",
                     choices=["celeba", "fgvc-aircraft"])
 parser.add_argument("--epochs", type=int, default=1)
-parser.add_argument("--patience", type=int, default=1)
+parser.add_argument("--patience", type=int, default=10)
 parser.add_argument("--data_dir", type=str, required=True)
 args = parser.parse_args()
+
 
 device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 
@@ -77,26 +78,27 @@ batch_size = hyperparameters["batch_size"]
 em_batch_size = hyperparameters["em_batch_size"]
 learning_rate = hyperparameters["learning_rate"]
 num_channels = hyperparameters["num_channels"]
-train_split = hyperparameters["train_split"]
-val_split = hyperparameters["val_split"]
-test_split = hyperparameters["test_split"]
 
 # compute the number of features
 n_features = np.prod(image_shape)
 
+em_iters = 1
 
 #*******************************************************************************
 # read in data
 #*******************************************************************************
 data_handler = ImageDataset(dataset=args.dataset, root_dir="./data", batch_size=batch_size, image_shape=image_shape)
 
-mppca_dataset = data_handler.get_mppca_dataset(split=train_split)
+mppca_dataset = data_handler.get_mppca_dataset()
+
+train_loader, val_loader, test_loader = data_handler.get_dataloaders()
+
 
 transform_mean, transform_std = data_handler.transform_mean, data_handler.transform_std
 
-train_loader = data_handler.get_dataloaders(split=train_split)
-val_loader = data_handler.get_dataloaders(split=val_split)
-test_loader = data_handler.get_dataloaders(split=test_split)
+#train_loader = data_handler.get_dataloaders(split=train_split)
+#val_loader = data_handler.get_dataloaders(split=val_split)
+#test_loader = data_handler.get_dataloaders(split=test_split)
 
 
 #*******************************************************************************
@@ -142,7 +144,7 @@ def compute_loss(x0, x1, flow_matcher, model):
 
     return loss
 
-num_channels = 64
+
 #*******************************************************************************
 # set up models and optimizers
 #*******************************************************************************
@@ -283,8 +285,8 @@ model.eval()
 
 model_ = copy.deepcopy(model)
 
-batch_size_fid = 1024
-num_gen = 50000
+batch_size_fid = 128
+num_gen = 1000
 
 def gen_img(unused_latent):
     node_ = NeuralODE(model_, solver="dopri5", sensitivity="adjoint", atol=1e-4, rtol=1e-4)
@@ -329,5 +331,5 @@ for batch in tqdm(test_loader):
 
 std_nfe, mean_nfe = torch.std_mean(torch.tensor(nfes))
 logger.info(f"test NFE: {mean_nfe:.4f} ± {std_nfe:.4f}")
-# ./data/celeba/img_align_celeba/"
-# # ./data/fgvc-aircraft-2013b/data/images/"
+# "./data/celeba/img_align_celeba/"
+# "./data/fgvc-aircraft-2013b/data/images/"
