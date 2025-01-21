@@ -1,0 +1,88 @@
+{
+    "power": {
+        "n_features":       6,
+        "n_components":     5,
+        "n_factors":        3,
+        "em_iters":         10,
+        "batch_size":       256,
+        "learning_rate":    5e-4,
+        "train_split":      0.8,
+        "val_split":        0.1,
+        "test_split":       0.1,
+        "hidden_units":     32
+    },
+    "gas": {
+        "n_features":       8,
+        "n_components":     10,
+        "n_factors":        3,
+        "em_iters":         50,
+        "batch_size":       256,
+        "learning_rate":    5e-4,
+        "train_split":      0.8,
+        "val_split":        0.1,
+        "test_split":       0.1,
+        "hidden_units":     32
+    },
+    "hepmass": {
+        "n_features":       21,
+        "n_components":     10,
+        "n_factors":        4,
+        "em_iters":         50,
+        "batch_size":       256,
+        "learning_rate":    5e-4,
+        "train_split":      0.8,
+        "val_split":        0.1,
+        "test_split":       0.1,
+        "hidden_units":     128
+    },
+    "miniboone": {
+        "n_features":       43,
+        "n_components":     30,
+        "n_factors":        6,
+        "em_iters":         50,
+        "batch_size":       64,
+        "learning_rate":    5e-4,
+        "train_split":      0.8,
+        "val_split":        0.1,
+        "test_split":       0.1,
+        "hidden_units":     128
+    },
+    "bsds300": {
+        "n_features":       63,
+        "n_components":     30,
+        "n_factors":        6,
+        "em_iters":         50,
+        "batch_size":       256,
+        "learning_rate":    5e-4,
+        "train_split":      0.8,
+        "val_split":        0.1,
+        "test_split":       0.1,
+        "hidden_units":     128
+    },
+    "celeba": {
+        "image_shape":      [64, 64, 3],
+        "n_components":     100,
+        "n_factors":        10,
+        "em_iters":         10,
+        "batch_size":       128,
+        "em_batch_size":    1000,
+        "learning_rate":    5e-4,
+        "num_channels":     64,
+        "train_split":      "train",
+        "val_split":        "valid",
+        "test_split":       "test"
+    },
+    "fgvc-aircraft": {
+        "image_shape":      [64, 64, 3],
+        "n_components":     50,
+        "n_factors":        10,
+        "em_iters":         10,
+        "batch_size":       64,
+        "em_batch_size":    200,
+        "learning_rate":    5e-4,
+        "num_channels":     64,
+        "train_split":      "trainval",
+        "val_split":        "test",
+        "test_split":       "test"
+    }
+}

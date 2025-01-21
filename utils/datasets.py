@@ -94,7 +94,7 @@ class ImageDataset:
             mean = torch.tensor([0.485, 0.456, 0.406])
             std = torch.tensor([0.229, 0.224, 0.225])
             mppca_transforms = transforms.Compose([
-                transforms.Resize((32, 32)),
+                transforms.Resize((64, 64)),
                 transforms.Resize(self.image_shape[0]),
                 transforms.ToTensor(),
                 transforms.Normalize(mean, mean),

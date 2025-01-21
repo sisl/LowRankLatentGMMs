@@ -10,9 +10,8 @@ import torch
 from torch.distributions import MultivariateNormal
 from torch.nn.utils import clip_grad_norm_
 from torch.optim.lr_scheduler import CosineAnnealingLR
-from tqdm import tqdm
-
 from torchdyn.core import NeuralODE
+from tqdm import tqdm
 
 # torchcfm imports
 from torchcfm.conditional_flow_matching import (
