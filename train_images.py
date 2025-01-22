@@ -45,7 +45,7 @@ parser.add_argument("--flow", type=str, default="cfm",
                     choices=["cfm", "otcfm"])
 parser.add_argument("--dataset", type=str, default="celeba",
                     choices=["celeba", "fgvc-aircraft"])
-parser.add_argument("--epochs", type=int, default=1)
+parser.add_argument("--epochs", type=int, default=100)
 parser.add_argument("--patience", type=int, default=10)
 parser.add_argument("--data_dir", type=str, required=True)
 args = parser.parse_args()
@@ -85,7 +85,6 @@ num_channels = hyperparameters["num_channels"]
 # compute the number of features
 n_features = np.prod(image_shape)
 
-em_iters = 0
 
 #*******************************************************************************
 # read in data
@@ -157,12 +156,12 @@ else:
 
 # define the Neural ODE network
 model = UNetModelWrapper(
-    dim=(3, 32, 32),
+    dim=(3, 64, 64),
     num_res_blocks=2,
-    num_channels=num_channels,
-    channel_mult=[1, 2, 3, 4],
+    num_channels=32,
+    channel_mult=[1, 2, 4, 8],
     num_heads=4,
-    num_head_channels=64,
+    num_head_channels=32,
     attention_resolutions="16",
     dropout=0.1,
 ).to(device)
@@ -220,26 +219,24 @@ logger.info("--------------------")
 for epoch in range(args.epochs):
     logger.info(f"Starting epoch {epoch + 1}/{args.epochs}")
     model.train()
-    for i, batch in enumerate(train_loader):
-        optimizer.zero_grad()
-        x0 = sample_base(base=base_distribution, N=batch_size, image_shape=image_shape, with_noise=True).to(device)
-        x1 = batch[0].to(device)
-        loss = compute_loss(x0, x1, flow_matcher, model)
-        loss.backward()
-        clip_grad_norm_(model.parameters(), 1.)
-        optimizer.step()
-        scheduler.step()
-
-        if i == 40:
-            break
-
+    for i, batch in enumerate(tqdm(train_loader)):
+        with torch.autocast("cuda"):
+            optimizer.zero_grad()
+            x0 = sample_base(base=base_distribution, N=batch_size, image_shape=image_shape, with_noise=True).to(device)
+            x1 = batch[0].to(device)
+            loss = compute_loss(x0, x1, flow_matcher, model)
+            loss.backward()
+            clip_grad_norm_(model.parameters(), 1.)
+            optimizer.step()
+            scheduler.step()
+        '''
         if (i + 1) % 20 == 0:
             logger.info(
                 f"Epoch [{epoch + 1}/{args.epochs}], "
                 f"Batch [{i + 1}/{len(train_loader)}], "
                 f"Loss: {loss.item():.4f}"
             )
-
+        '''
     model.eval()
 
     # generate sample images to check training progress

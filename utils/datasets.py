@@ -97,7 +97,7 @@ class ImageDataset:
             std = torch.tensor([0.229, 0.224, 0.225])
             mppca_transforms = transforms.Compose([
                 transforms.Resize((64, 64)),
-                transforms.Resize(self.image_shape[0]),
+                #transforms.Resize(self.image_shape[0]),
                 transforms.ToTensor(),
                 transforms.Normalize(mean, mean),
                 ReshapeTransform([-1])
@@ -159,11 +159,11 @@ class ImageDataset:
         
 
         train_loader = DataLoader(train_dataset, batch_size=self.batch_size,
-            shuffle=True, drop_last=True)
+            shuffle=True, drop_last=True, pin_memory=True)
         val_loader = DataLoader(val_dataset, batch_size=self.batch_size,
-            shuffle=True, drop_last=True)
+            shuffle=True, drop_last=True, pin_memory=True)
         test_loader = DataLoader(test_dataset, batch_size=self.batch_size,
-            shuffle=True, drop_last=True)
+            shuffle=True, drop_last=True, pin_memory=True)
         
         return train_loader, val_loader, test_loader
     
