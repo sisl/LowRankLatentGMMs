@@ -12,14 +12,17 @@ import copy
 import logging
 import numpy as np
 import os
+from PIL import Image
 import time
 import torch
 from torch.distributions import MultivariateNormal
 from torch.nn.utils import clip_grad_norm_
 from torch.optim.lr_scheduler import CosineAnnealingLR
 from torchdyn.core import NeuralODE
+import torchvision.transforms as transforms
 from torchvision.utils import save_image
 from tqdm import tqdm
+
 
 # torchcfm imports
 from torchcfm.conditional_flow_matching import (
@@ -82,7 +85,7 @@ num_channels = hyperparameters["num_channels"]
 # compute the number of features
 n_features = np.prod(image_shape)
 
-em_iters = 1
+em_iters = 0
 
 #*******************************************************************************
 # read in data
@@ -95,10 +98,6 @@ train_loader, val_loader, test_loader = data_handler.get_dataloaders()
 
 
 transform_mean, transform_std = data_handler.transform_mean, data_handler.transform_std
-
-#train_loader = data_handler.get_dataloaders(split=train_split)
-#val_loader = data_handler.get_dataloaders(split=val_split)
-#test_loader = data_handler.get_dataloaders(split=test_split)
 
 
 #*******************************************************************************
@@ -158,7 +157,7 @@ else:
 
 # define the Neural ODE network
 model = UNetModelWrapper(
-    dim=(3, 64, 64),
+    dim=(3, 32, 32),
     num_res_blocks=2,
     num_channels=num_channels,
     channel_mult=[1, 2, 3, 4],
@@ -231,6 +230,9 @@ for epoch in range(args.epochs):
         optimizer.step()
         scheduler.step()
 
+        if i == 40:
+            break
+
         if (i + 1) % 20 == 0:
             logger.info(
                 f"Epoch [{epoch + 1}/{args.epochs}], "
@@ -285,8 +287,8 @@ model.eval()
 
 model_ = copy.deepcopy(model)
 
-batch_size_fid = 128
-num_gen = 1000
+batch_size_fid = 256
+num_gen = 10000
 
 def gen_img(unused_latent):
     node_ = NeuralODE(model_, solver="dopri5", sensitivity="adjoint", atol=1e-4, rtol=1e-4)
@@ -303,7 +305,12 @@ def gen_img(unused_latent):
 
 from cleanfid import fid
 
-#score = compute_fid(gen_img, args.data_dir)
+
+def custom_transform(img):
+    transform = transforms.Compose(data_handler.mppca_transforms.transforms[:-1])
+    img = np.array(transform(Image.fromarray(img)))
+    return img
+
 
 score = fid.compute_fid(
     gen=gen_img,
@@ -313,8 +320,8 @@ score = fid.compute_fid(
     num_gen=num_gen,
     dataset_split="custom",
     mode="clean",
+    custom_image_tranform=custom_transform
 )
-
 
 logger.info(f"FID: {score:.8f}")
 
