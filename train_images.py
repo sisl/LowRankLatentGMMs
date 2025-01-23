@@ -220,15 +220,15 @@ for epoch in range(args.epochs):
     logger.info(f"Starting epoch {epoch + 1}/{args.epochs}")
     model.train()
     for i, batch in enumerate(tqdm(train_loader)):
-        with torch.autocast("cuda"):
-            optimizer.zero_grad()
-            x0 = sample_base(base=base_distribution, N=batch_size, image_shape=image_shape, with_noise=True).to(device)
-            x1 = batch[0].to(device)
-            loss = compute_loss(x0, x1, flow_matcher, model)
-            loss.backward()
-            clip_grad_norm_(model.parameters(), 1.)
-            optimizer.step()
-            scheduler.step()
+        #with torch.autocast("cuda"):
+        optimizer.zero_grad()
+        x0 = sample_base(base=base_distribution, N=batch_size, image_shape=image_shape, with_noise=True).to(device)
+        x1 = batch[0].to(device)
+        loss = compute_loss(x0, x1, flow_matcher, model)
+        loss.backward()
+        clip_grad_norm_(model.parameters(), 1.)
+        optimizer.step()
+        scheduler.step()
         '''
         if (i + 1) % 20 == 0:
             logger.info(
@@ -240,8 +240,8 @@ for epoch in range(args.epochs):
     model.eval()
 
     # generate sample images to check training progress
-    model_ = copy.deepcopy(model)
-    node_ = NeuralODE(model_, solver="dopri5", sensitivity="adjoint", atol=1e-4, rtol=1e-4)
+    #model_ = copy.deepcopy(model)
+    node_ = NeuralODE(model, solver="dopri5", sensitivity="adjoint", atol=1e-4, rtol=1e-4)
     with torch.no_grad():
         samples = sample_base(base=base_distribution, N=64, image_shape=image_shape, with_noise=True).to(device)
         traj = node_.trajectory(
@@ -282,13 +282,13 @@ torch.save(model.state_dict(), os.path.join(model_dir, 'model.pt'))
 #*******************************************************************************
 model.eval()
 
-model_ = copy.deepcopy(model)
+#model_ = copy.deepcopy(model)
 
 batch_size_fid = 256
 num_gen = 10000
 
 def gen_img(unused_latent):
-    node_ = NeuralODE(model_, solver="dopri5", sensitivity="adjoint", atol=1e-4, rtol=1e-4)
+    node_ = NeuralODE(model, solver="dopri5", sensitivity="adjoint", atol=1e-4, rtol=1e-4)
     with torch.no_grad():
         x = sample_base(base=base_distribution, N=batch_size_fid, image_shape=image_shape).to(device)
         traj = node_.trajectory(
