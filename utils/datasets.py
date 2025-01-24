@@ -4,7 +4,7 @@ from torch.utils.data import Dataset, DataLoader, random_split
 import random
 from torchvision.datasets import ImageFolder
 
-from torchvision.datasets import CelebA, FGVCAircraft
+from torchvision.datasets import CelebA, FGVCAircraft, FashionMNIST
 import torchvision.transforms as transforms
 
 from .utils import CropTransform, ReshapeTransform
@@ -102,6 +102,13 @@ class ImageDataset:
                 transforms.Normalize(mean, mean),
                 ReshapeTransform([-1])
             ])
+        elif self.dataset == "fashion":
+            mean = torch.tensor([0.0, 0.0, 0.0])
+            std = torch.tensor([1.0, 1.0, 1.0])
+            mppca_transforms = transforms.Compose([
+                transforms.ToTensor(),
+                ReshapeTransform([-1])
+            ])
         else:
             raise ValueError(f"Dataset '{self.dataset}' is invalid.")
 
@@ -123,6 +130,13 @@ class ImageDataset:
             dataset = FGVCAircraft(
                 root=self.root_dir,
                 split="trainval",
+                transform=self.mppca_transforms,
+                download=True
+            )
+        elif self.dataset == "fashion":
+            dataset = FashionMNIST(
+                root=self.root_dir,
+                train=True,
                 transform=self.mppca_transforms,
                 download=True
             )
@@ -149,11 +163,23 @@ class ImageDataset:
             temp_dataset = FGVCAircraft(root=self.root_dir, split="test",
                 transform=cfm_transforms, download=True)
 
-            val_size = int(0.5 * len(temp_dataset))  # 50% for training
-            test_size = len(temp_dataset) - val_size  # 50% for validation
+            val_size = int(0.5 * len(temp_dataset))  # 50% for validation
+            test_size = len(temp_dataset) - val_size  # 50% for testing
 
             val_dataset, test_dataset = random_split(temp_dataset, [val_size, test_size], torch.Generator().manual_seed(42))
 
+        elif self.dataset == "fashion":
+            temp_dataset = FashionMNIST(root=self.root_dir, train=True,
+                transform=cfm_transforms, download=True
+            )
+            train_size = int(0.8 * len(temp_dataset))  # 80% for training
+            val_size = len(temp_dataset) - train_size  # 20% for validation
+
+            train_dataset, val_dataset = random_split(temp_dataset, [train_size, val_size], torch.Generator().manual_seed(42))
+
+            test_dataset = FashionMNIST(root=self.root_dir, train=False,
+                transform=cfm_transforms, download=True
+            )
         else:
             raise ValueError(f"Dataset '{self.dataset}' is invalid.")
         

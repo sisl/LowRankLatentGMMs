@@ -44,15 +44,14 @@ parser.add_argument("--base", type=str, default="normal",
 parser.add_argument("--flow", type=str, default="cfm",
                     choices=["cfm", "otcfm"])
 parser.add_argument("--dataset", type=str, default="celeba",
-                    choices=["celeba", "fgvc-aircraft"])
+                    choices=["celeba", "fgvc-aircraft", "fashion"])
 parser.add_argument("--epochs", type=int, default=100)
 parser.add_argument("--patience", type=int, default=10)
-parser.add_argument("--data_dir", type=str, required=True)
+#parser.add_argument("--data_dir", type=str, required=True)
+
 args = parser.parse_args()
 
-
 device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
-
 
 # create results directory
 model_dir = "./results/{}/{}".format(args.dataset, args.flow + "-" + args.base)
@@ -84,7 +83,6 @@ num_channels = hyperparameters["num_channels"]
 
 # compute the number of features
 n_features = np.prod(image_shape)
-
 
 #*******************************************************************************
 # read in data
@@ -155,11 +153,23 @@ else:
     raise ValueError
 
 # define the Neural ODE network
+'''
 model = UNetModelWrapper(
     dim=(3, 64, 64),
     num_res_blocks=2,
     num_channels=32,
     channel_mult=[1, 2, 4, 8],
+    num_heads=4,
+    num_head_channels=32,
+    attention_resolutions="16",
+    dropout=0.1,
+).to(device)
+'''
+model = UNetModelWrapper(
+    dim=(1, 28, 28),
+    num_res_blocks=1,
+    num_channels=32,
+    channel_mult=[1, 2, 2],
     num_heads=4,
     num_head_channels=32,
     attention_resolutions="16",
@@ -276,64 +286,58 @@ logger.info("--------------------")
 
 torch.save(model.state_dict(), os.path.join(model_dir, 'model.pt'))
 
-
+#%%
 #*******************************************************************************
 # model evaluation
 #*******************************************************************************
 model.eval()
 
-#model_ = copy.deepcopy(model)
-
-batch_size_fid = 256
-num_gen = 10000
-
-def gen_img(unused_latent):
-    node_ = NeuralODE(model, solver="dopri5", sensitivity="adjoint", atol=1e-4, rtol=1e-4)
-    with torch.no_grad():
-        x = sample_base(base=base_distribution, N=batch_size_fid, image_shape=image_shape).to(device)
-        traj = node_.trajectory(
-            x.to(device),
-            t_span=torch.linspace(0, 1, 2, device=device),
-        )
-    img = traj[-1, :]
-    img = (img * transform_std[:, None, None].to(device) + transform_mean[:, None, None].to(device))*255
-    img = img.clip(0, 255).to(torch.uint8)
-    return img
-
-from cleanfid import fid
-
-
-def custom_transform(img):
-    transform = transforms.Compose(data_handler.mppca_transforms.transforms[:-1])
-    img = np.array(transform(Image.fromarray(img)))
-    return img
-
-
-score = fid.compute_fid(
-    gen=gen_img,
-    fdir2=args.data_dir,
-    num_workers=4,
-    batch_size=batch_size_fid,
-    num_gen=num_gen,
-    dataset_split="custom",
-    mode="clean",
-    custom_image_tranform=custom_transform
+node = NeuralODE(
+    vector_field=model,  
+    solver="dopri5", 
+    sensitivity="adjoint", 
+    atol=1e-4, 
+    rtol=1e-4
 )
 
-logger.info(f"FID: {score:.8f}")
+from ndb import *
+from torch.utils.data import DataLoader
 
-nfes = []
-for batch in tqdm(test_loader):
-    node_ = NeuralODE(model, solver="dopri5", sensitivity="adjoint", atol=1e-4, rtol=1e-4)
+# read in all test data for maximum mean discrepancy calculation
+test_data = []
+for batch in test_loader:
+    test_data.append(batch[0])
+test_data = torch.cat(test_data, dim=0)
+
+N = test_data.shape[0]
+
+test_data = test_data.reshape((N, -1))
+
+# generate samples from the learned model
+base_samples = sample_base(base=base_distribution, N=N, image_shape=image_shape, with_noise=True).to(device)
+
+base_dataset = DataLoader(base_samples, batch_size=batch_size)
+
+
+model_samples = []
+for batch in tqdm(base_dataset):
     with torch.no_grad():
-        traj = node_.trajectory(
-            batch[0].to(device),
-            t_span=torch.linspace(1, 0, 2, device=device),
-        )
-        nfe = node_.vf.nfe
-        nfes.append(nfe)
+        transformed_data = node.trajectory(
+            batch,
+            t_span=torch.linspace(0, 1, 2, device=device),
+        )[-1].cpu()
+    model_samples.append(transformed_data)
 
-std_nfe, mean_nfe = torch.std_mean(torch.tensor(nfes))
-logger.info(f"test NFE: {mean_nfe:.4f} ± {std_nfe:.4f}")
-# "./data/celeba/img_align_celeba/"
-# "./data/fgvc-aircraft-2013b/data/images/"
+model_samples = torch.cat(model_samples, dim=0)
+
+model_samples = model_samples.reshape((N, -1))
+
+# compute NDB
+mnist_ndb = NDB(training_data=test_data, number_of_bins=100, z_threshold=4, whitening=False,
+                cache_folder='./results/mnist_toy_example_ndb_cache')
+
+
+results = mnist_ndb.evaluate(model_samples, 'Validation')
+
+logger.info("NDB/K: {:0.4f} s".format(results["NDB"]/100))
+logger.info("JS: {:0.8f} s".format(results["JS"]))

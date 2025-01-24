@@ -78,5 +78,15 @@
         "em_batch_size":    200,
         "learning_rate":    5e-4,
         "num_channels":     64
+    },
+    "fashion": {
+        "image_shape":      [28, 28, 1],
+        "n_components":     30,
+        "n_factors":        6,
+        "em_iters":         10,
+        "batch_size":       128,
+        "em_batch_size":    1000,
+        "learning_rate":    5e-4,
+        "num_channels":     32
     }
 }
