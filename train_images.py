@@ -141,6 +141,13 @@ def compute_loss(x0, x1, flow_matcher, model):
     return loss
 
 
+def ema(source, target, decay):
+    source_dict = source.state_dict()
+    target_dict = target.state_dict()
+    for key in source_dict.keys():
+        target_dict[key].data.copy_(
+            target_dict[key].data * decay + source_dict[key].data * (1 - decay)
+        )
 #*******************************************************************************
 # set up models and optimizers
 #*******************************************************************************
@@ -153,14 +160,14 @@ else:
     raise ValueError
 
 # define the Neural ODE network
-'''
+
 model = UNetModelWrapper(
-    dim=(3, 64, 64),
+    dim=(3, 32, 32),
     num_res_blocks=2,
-    num_channels=32,
-    channel_mult=[1, 2, 4, 8],
+    num_channels=64,
+    channel_mult=[1, 2, 2, 2],
     num_heads=4,
-    num_head_channels=32,
+    num_head_channels=64,
     attention_resolutions="16",
     dropout=0.1,
 ).to(device)
@@ -175,6 +182,8 @@ model = UNetModelWrapper(
     attention_resolutions="16",
     dropout=0.1,
 ).to(device)
+'''
+ema_model = copy.deepcopy(model)
 
 # show NODE model size
 model_size = 0
@@ -183,7 +192,7 @@ for param in model.parameters():
 logger.info("Number of model parameters: %.2f M" % (model_size / 1024 / 1024))
 
 # define training objects
-optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate, weight_decay=1e-6)
+optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)#, weight_decay=1e-6)
 total_steps = args.epochs * len(train_loader)
 scheduler = CosineAnnealingLR(optimizer, total_steps, eta_min=1e-6)
 early_stopping = EarlyStopping(patience=args.patience, delta=1e-4, verbose=True)
@@ -205,7 +214,7 @@ elif args.base == "mppca":
         n_components=n_components,
         n_features=n_features,
         n_factors=n_factors,
-        init_method="rnd_samples"
+        init_method="kmeans"
     ).to(device)
     # count MPPCA parameters
     mppca_params = int(n_components*(n_features*n_factors+n_features+1)+(n_components-1))
@@ -214,7 +223,7 @@ elif args.base == "mppca":
         train_dataset=mppca_dataset, 
         batch_size=em_batch_size, 
         max_iterations=em_iters,
-        feature_sampling=0.3)
+        feature_sampling=0.5)
     end = time.time()
     logger.info("MPPCA fitting time: {:0.2f} s".format(end - start))
 else:
@@ -228,7 +237,7 @@ torch.manual_seed(42)
 logger.info("--------------------")
 for epoch in range(args.epochs):
     logger.info(f"Starting epoch {epoch + 1}/{args.epochs}")
-    model.train()
+    ema_model.train()
     for i, batch in enumerate(tqdm(train_loader)):
         #with torch.autocast("cuda"):
         optimizer.zero_grad()
@@ -239,6 +248,7 @@ for epoch in range(args.epochs):
         clip_grad_norm_(model.parameters(), 1.)
         optimizer.step()
         scheduler.step()
+        ema(model, ema_model, 0.9999)
         '''
         if (i + 1) % 20 == 0:
             logger.info(
@@ -247,11 +257,11 @@ for epoch in range(args.epochs):
                 f"Loss: {loss.item():.4f}"
             )
         '''
-    model.eval()
+    ema_model.eval()
 
     # generate sample images to check training progress
     #model_ = copy.deepcopy(model)
-    node_ = NeuralODE(model, solver="dopri5", sensitivity="adjoint", atol=1e-4, rtol=1e-4)
+    node_ = NeuralODE(ema_model, solver="dopri5", sensitivity="adjoint", atol=1e-4, rtol=1e-4)
     with torch.no_grad():
         samples = sample_base(base=base_distribution, N=64, image_shape=image_shape, with_noise=True).to(device)
         traj = node_.trajectory(
@@ -268,7 +278,7 @@ for epoch in range(args.epochs):
         for batch in tqdm(val_loader, desc="Computing validation loss"):
             x0 = sample_base(base=base_distribution, N=batch_size, image_shape=image_shape, with_noise=True).to(device)
             x1 = batch[0].to(device)
-            val_loss += compute_loss(x0, x1, flow_matcher, model).item()
+            val_loss += compute_loss(x0, x1, flow_matcher, ema_model).item()
             
     val_loss /= len(val_loader)
     logger.info("--------------------")
@@ -284,16 +294,16 @@ end = time.time()
 logger.info("Total training time: {:0.2f} s".format(end - start))
 logger.info("--------------------")
 
-torch.save(model.state_dict(), os.path.join(model_dir, 'model.pt'))
+torch.save(ema_model.state_dict(), os.path.join(model_dir, 'model.pt'))
 
 #%%
 #*******************************************************************************
 # model evaluation
 #*******************************************************************************
-model.eval()
+ema_model.eval()
 
 node = NeuralODE(
-    vector_field=model,  
+    vector_field=ema_model,  
     solver="dopri5", 
     sensitivity="adjoint", 
     atol=1e-4, 
@@ -333,11 +343,24 @@ model_samples = torch.cat(model_samples, dim=0)
 model_samples = model_samples.reshape((N, -1))
 
 # compute NDB
-mnist_ndb = NDB(training_data=test_data, number_of_bins=100, z_threshold=4, whitening=False,
-                cache_folder='./results/mnist_toy_example_ndb_cache')
+mnist_ndb = NDB(training_data=test_data, number_of_bins=200, significance_level=0.05, whitening=False)
 
 
 results = mnist_ndb.evaluate(model_samples, 'Validation')
 
-logger.info("NDB/K: {:0.4f} s".format(results["NDB"]/100))
-logger.info("JS: {:0.8f} s".format(results["JS"]))
+logger.info("NDB/K: {:0.4f}".format(results["NDB"]/200))
+logger.info("JS: {:0.8f}".format(results["JS"]))
+
+
+nfes = []
+for batch in tqdm(test_loader):
+    with torch.no_grad():
+        traj = node.trajectory(
+            batch[0].to(device),
+            t_span=torch.linspace(1, 0, 2, device=device),
+        )
+        nfe = node.vf.nfe
+        nfes.append(nfe)
+
+std_nfe, mean_nfe = torch.std_mean(torch.tensor(nfes))
+logger.info(f"test NFE: {mean_nfe:.4f} ± {std_nfe:.4f}")

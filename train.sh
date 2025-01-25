@@ -14,13 +14,14 @@
 #python3 train_images.py --base "mppca" --flow "cfm" --dataset "fgvc-aircraft" --data_dir "./data/fgvc-aircraft-2013b/data/images/"
 #python3 train_images.py --base "normal" --flow "cfm" --dataset "fgvc-aircraft" --data_dir "./data/fgvc-aircraft-2013b/data/images/"
 
-python3 train_images.py --base "mppca" --flow "cfm" --dataset "fashion"
-python3 train_images.py --base "normal" --flow "cfm" --dataset "fashion"
-python3 train_images.py --base "mppca" --flow "otcfm" --dataset "fashion"
-python3 train_images.py --base "normal" --flow "otcfm" --dataset "fashion"
+#python3 train_images.py --base "normal" --flow "cfm" --dataset "fashion"
+#python3 train_images.py --base "normal" --flow "cfm" --dataset "fashion"
+#python3 train_images.py --base "mppca" --flow "otcfm" --dataset "fashion"
+#python3 train_images.py --base "normal" --flow "otcfm" --dataset "fashion"
 
 
-#python3 train_images.py --base "mppca" --flow "otcfm" --dataset "celeba" --data_dir "./data/celeba/img_align_celeba/"
+python3 train_images.py --base "mppca" --flow "cfm" --dataset "celeba"
+python3 train_images.py --base "normal" --flow "cfm" --dataset "celeba"
 
 #python3 train_uci.py --flow "cfm" --base 'mppca' --dataset "power"
 #python3 train_uci.py --flow "cfm" --base 'normal' --dataset "power"

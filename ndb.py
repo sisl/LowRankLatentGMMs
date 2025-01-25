@@ -74,7 +74,7 @@ class NDB:
         if n//k > 1000:
             print('Training data size should be ~500 times the number of bins (for reasonable speed and accuracy)')
 
-        clusters = KMeans(n_clusters=k, max_iter=100).fit(whitened_samples[:, self.used_d_indices])
+        clusters = KMeans(n_clusters=k, max_iter=100, random_state=42).fit(whitened_samples[:, self.used_d_indices])
 
         bin_centers = np.zeros([k, d])
         for i in range(k):
