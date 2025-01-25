@@ -63,7 +63,7 @@
         "image_shape":      [32, 32, 3],
         "n_components":     50,
         "n_factors":        10,
-        "em_iters":         5,
+        "em_iters":         20,
         "batch_size":       128,
         "em_batch_size":    1000,
         "learning_rate":    5e-4,

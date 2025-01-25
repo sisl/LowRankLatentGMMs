@@ -223,7 +223,7 @@ elif args.base == "mppca":
         train_dataset=mppca_dataset, 
         batch_size=em_batch_size, 
         max_iterations=em_iters,
-        feature_sampling=0.5)
+        feature_sampling=False)
     end = time.time()
     logger.info("MPPCA fitting time: {:0.2f} s".format(end - start))
 else:
