@@ -39,34 +39,22 @@ from utils.utils import load_config
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--base", type=str, default="normal",
-                    choices=["normal", "mppca"])
-parser.add_argument("--flow", type=str, default="cfm",
-                    choices=["cfm", "otcfm"])
-parser.add_argument("--dataset", type=str, default="celeba",
-                    choices=["celeba", "fgvc-aircraft", "fashion"])
+parser.add_argument("--base", type=str, default="Normal",
+                    choices=["Normal", "MPPCA"])
+parser.add_argument("--flow", type=str, default="CFM",
+                    choices=["CFM", "OTCFM"])
+parser.add_argument("--dataset", type=str, default="power",
+                    choices=["POWER", "GAS", "HEPMASS", "MINIBOONE", "BSDS300"])
 parser.add_argument("--epochs", type=int, default=50)
-parser.add_argument("--patience", type=int, default=50)
-#parser.add_argument("--data_dir", type=str, required=True)
-
+parser.add_argument("--patience", type=int, default=10)
+parser.add_argument("--n_trials", type=int, default=2)
 args = parser.parse_args()
 
 device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 
 # create results directory
-model_dir = "./results/{}/{}".format(args.dataset, args.flow + "-" + args.base)
-os.makedirs(model_dir, exist_ok=True)
-
-# set up logger
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(message)s",
-    handlers=[
-        logging.FileHandler(os.path.join(model_dir, "training.log"), mode="w"),
-        logging.StreamHandler()
-    ]
-)
-logger = logging.getLogger(__name__)
+results_dir = "./results/{}/{}".format(args.dataset, args.flow + "-" + args.base)
+os.makedirs(results_dir, exist_ok=True)
 
 
 # read in experiment hyperparameters
@@ -189,7 +177,7 @@ ema_model = copy.deepcopy(model)
 model_size = 0
 for param in model.parameters():
     model_size += param.data.nelement()
-logger.info("Number of model parameters: %.2f M" % (model_size / 1024 / 1024))
+print("Number of model parameters: %.2f M" % (model_size / 1024 / 1024))
 
 # define training objects
 #optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate, weight_decay=1e-6)
@@ -197,7 +185,6 @@ optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)#, weight_deca
 total_steps = args.epochs * len(train_loader)
 scheduler = CosineAnnealingLR(optimizer, total_steps, eta_min=1e-6)
 early_stopping = EarlyStopping(patience=args.patience, delta=1e-4, verbose=True)
-logger.info(str(optimizer))
 
 
 #*******************************************************************************
@@ -296,7 +283,7 @@ end = time.time()
 logger.info("Total training time: {:0.2f} s".format(end - start))
 logger.info("--------------------")
 
-torch.save(ema_model.state_dict(), os.path.join(model_dir, 'model.pt'))
+torch.save(ema_model.state_dict(), os.path.join(results_dir, 'model.pt'))
 
 #%%
 #*******************************************************************************

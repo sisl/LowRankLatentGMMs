@@ -17,7 +17,7 @@ parser.add_argument('--dataset', type=str, default='fashion-mnist',
                     choices=['fashion-mnist', 'celeba', 'cifar10', 'fgvc-aircraft'])
 parser.add_argument('--fit_method', type=str, default='batch_em',
                     choices=['batch_em', 'em'])
-parser.add_argument('--n_components', type=int, default=100)
+parser.add_argument('--n_components', type=int, default=50)
 parser.add_argument('--n_factors', type=int, default=5)
 args = parser.parse_args()
 
@@ -28,7 +28,7 @@ if args.dataset == 'celeba':
     n_components = args.n_components
     n_factors = args.n_factors
     batch_size = 1000
-    num_iterations = 5
+    num_iterations = 1
     feature_sampling = False
     init_method = 'kmeans'
     trans = transforms.Compose(
@@ -120,8 +120,7 @@ print('Defining the MPPCA model...')
 model = MPPCA(
             n_components=n_components, 
             n_features=np.prod(image_shape), 
-            n_factors=n_factors,
-            init_method=init_method
+            n_factors=n_factors
         ).to(device=device)
 
 print('EM fitting: {} components / {} factors / batch size {}...'.format(
@@ -133,8 +132,7 @@ if args.fit_method == "batch_em":
                         train_dataset=train_set, 
                         test_dataset=test_set, 
                         batch_size=batch_size, 
-                        max_iterations=num_iterations,
-                        feature_sampling=feature_sampling)
+                        max_iterations=num_iterations)
     end = time.time()
     print("time {:0.2f}".format(end-start)) 
 

@@ -33,7 +33,7 @@
 #python3 train_uci.py --flow "otcfm" --base 'mppca' --dataset "gas"
 #python3 train_uci.py --flow "otcfm" --base 'normal' --dataset "gas"
 
-python3 train_uci.py --flow "CFM" --base 'MPPCA' --dataset "HEPMASS"
+#python3 train_uci.py --flow "CFM" --base 'MPPCA' --dataset "HEPMASS"
 python3 train_uci.py --flow "CFM" --base 'Normal' --dataset "HEPMASS"
 #python3 train_uci.py --flow "otcfm" --base 'mppca' --dataset "hepmass"
 #python3 train_uci.py --flow "otcfm" --base 'normal' --dataset "hepmass"

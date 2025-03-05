@@ -8,10 +8,6 @@ from PIL import Image
 import sklearn.datasets as datasets
 import torch
 
-from torchcfm.utils import torch_wrapper
-from torchdyn.core import DEFunc, NeuralODE
-#from cnf import compute_log_probs
-
 from models.mppca import MPPCA
 
 # color-blind friendly palette
@@ -93,6 +89,7 @@ def visualize_mixture(model, image_shape=[64, 64, 3], start_component=0, end_com
             canvas[y_start:y_start+h, x_start+2*w+2:x_start+3*w+2] = to_im(mu - z * A_i)
     return canvas
 
+
 def plot_trajectories(traj):
     """Plot trajectories of some selected samples."""
     n = 2000
@@ -108,78 +105,6 @@ def plot_trajectories(traj):
     plt.gca().set_aspect('equal')
     plt.show()
 
-'''
-def visualize_model(model, base, title):
-    w = 4
-    points = 200j
-    device = "cpu"
-    Y, X = np.mgrid[-w:w:points, -w:w:points]
-    gridpoints = torch.tensor(np.stack([X.flatten(), Y.flatten()], axis=1)).type(torch.float32)
-    points_small = 20j
-    points_real_small = 20
-    Y_small, X_small = np.mgrid[-w:w:points_small, -w:w:points_small]
-    gridpoints_small = torch.tensor(np.stack([X_small.flatten(), Y_small.flatten()], axis=1)).type(
-        torch.float32
-    )
-
-    torch.manual_seed(42)
-    sample = base.sample((1024,))
-    ts = torch.linspace(0, 1, 51)
-
-    nde = NeuralODE(DEFunc(torch_wrapper(model)), solver="euler").to(device)
-    # with torch.no_grad():
-    traj = nde.trajectory(sample.to(device), t_span=ts.to(device)).detach().cpu().numpy()
-
-    for i, t in enumerate(ts):
-        fig, axes = plt.subplots(1, 3, figsize=(18, 6))
-        # density plot
-        with torch.no_grad():
-            if t > 0:
-                log_probs = compute_log_probs(model, gridpoints, t, device, base)
-            else:
-                log_probs = base.log_prob(gridpoints)
-
-        log_probs = log_probs.reshape(Y.shape)
-        ax = axes[0]
-        ax.pcolormesh(X, Y, torch.exp(log_probs))
-
-        # Quiver plot
-        out = model(
-            torch.cat(
-                [gridpoints_small, torch.ones((gridpoints_small.shape[0], 1)) * t], dim=1
-            ).to(device)
-        )
-        out = out.reshape([points_real_small, points_real_small, 2]).cpu().detach().numpy()
-        ax = axes[1]
-        ax.quiver(X_small, Y_small,
-            out[:, :, 0],
-            out[:, :, 1],
-            np.sqrt(np.sum(out**2, axis=-1)),
-            cmap="coolwarm",
-            scale=15.0,
-            width=0.01,
-            pivot="mid",
-        )
-
-        # trajectories
-        ax = axes[2]
-        sample_traj = traj
-        ax.scatter(sample_traj[0, :, 0], sample_traj[0, :, 1], s=15, alpha=1, c='k')
-        ax.scatter(sample_traj[:i, :, 0], sample_traj[:i, :, 1], s=1, alpha=0.2, c=pastelRed)
-        ax.scatter(sample_traj[i, :, 0], sample_traj[i, :, 1], s=15, alpha=1, c=pastelRed)
-
-        for ax in axes:
-            ax.set_xticks([])
-            ax.set_yticks([])
-            ax.set_xlim(-w, w)
-            ax.set_ylim(-w, w)
-            ax.set_aspect('equal')
-        plt.tight_layout()
-
-        os.makedirs("figures/trajectory/{}/".format(title), exist_ok=True)
-        plt.savefig("figures/trajectory/{}/{:0.2f}.png".format(title, t), dpi=100)
-        plt.close()
-'''
 
 def plot_pdf(distribution, ax):
     x = torch.linspace(-2, 2, 500)
@@ -224,14 +149,7 @@ def make_gif(frame_folder, out_path, delete_frames=True):
 
     if delete_frames:
         for f in files:
-            os.remove(f)
-
-
-def infiniteloop(dataloader):
-    while True:
-        for x, y in iter(dataloader):
-            yield x
-  
+            os.remove(f)  
 
 def sample_base(base, N, image_shape, with_noise):
     if type(base) == MPPCA:

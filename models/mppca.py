@@ -1,6 +1,5 @@
 import numpy as np
 from sklearn.cluster import KMeans
-from k_means_constrained import KMeansConstrained
 import time
 import torch
 from torch.utils.data import DataLoader, RandomSampler
@@ -32,12 +31,11 @@ class MPPCA(torch.nn.Module):
         pi_logits (torch.Tensor): (k,) tensor of mixing proportion logits.
     """
 
-    def __init__(self, n_components, n_features, n_factors, init_method='rnd_samples'):
+    def __init__(self, n_components, n_features, n_factors):
         super(MPPCA, self).__init__()
         self.n_components = n_components
         self.n_features = n_features
         self.n_factors = n_factors
-        self.init_method = init_method
 
         self.mu = torch.zeros(n_components, n_features)
         self.W = torch.zeros(n_components, n_features, n_factors)
@@ -79,23 +77,26 @@ class MPPCA(torch.nn.Module):
         return samples.squeeze(), components
     
 
-    def component_log_likelihood(self, x, mu, W, log_Psi, pi_logits):
+    def component_log_prob(self, x:torch.Tensor) -> torch.Tensor:
         """
         Compute the log-likelihoods associated with each mixture component.
 
-        Parameters:
-        x (torch.Tensor): [n x d] tensor of input data
-        mu (torch.Tensor): [K x d] tensor of component mean vectors
-        W (torch.Tensor): [K x d x l] tensor of factor loading matrices
-        log_Psi (torch.Tensor): [K x d] tensor of log diagonal noise values
-        pi_logits (torch.Tensor): [K] tensor of mixing proportion logits 
+        Args:
+            x (torch.Tensor): [N x D] tensor of input data
 
         Returns:
-        component_lls (torch.Tensor): size [n x K] tensor of per-component log-likelihoods 
+            component_log_probs (torch.Tensor): [N x K] tensor of per-component 
+            log-likelihoods 
         """
-        K, d, l = W.shape
+
+        mu = self.mu
+        W = self.W
+        log_Psi = self.log_Psi
+        pi_logits = self.pi_logits
+
+        k, d, l = W.shape
         WT = W.transpose(1,2)
-        inv_Psi = torch.exp(-log_Psi).view(K, d, 1)
+        inv_Psi = torch.exp(-log_Psi).view(k,d,1)
         I = torch.eye(l, device=W.device).reshape(1,l,l)
         L = I + WT @ (inv_Psi * W)
         inv_L = torch.linalg.solve(L, I)
@@ -109,61 +110,33 @@ class MPPCA(torch.nn.Module):
             return torch.sum(x_c * component_m_d, dim=0)
 
         # combine likelihood terms
-        m_d = torch.stack([mahalanobis_distance(i) for i in range(K)])
+        m_d = torch.stack([mahalanobis_distance(i) for i in range(k)])
         log_det_cov = torch.logdet(L) - \
-            torch.sum(torch.log(inv_Psi.reshape(K, d)), axis=1)
+            torch.sum(torch.log(inv_Psi.reshape(k,d)), axis=1)
         log_const = torch.log(torch.tensor(2.0)*torch.pi)
-        log_probs = -0.5 * ((d*log_const + log_det_cov).reshape(K, 1) + m_d)
+        log_probs = -0.5 * ((d*log_const + log_det_cov).reshape(k, 1) + m_d)
 
-        return pi_logits.reshape(1, K) + log_probs.T
+        component_log_probs = pi_logits.reshape(1,k) + log_probs.T
+        
+        return component_log_probs
 
-
-    def per_component_log_likelihood(self, x, sampled_features=None):
-        """
-        Computes the per-sample and per-component log-likelihoods with feature 
-        sampling, if applicable.
-
-        Parameters:
-        x (torch.Tensor): [n x d] tensor of input data
-        sampled_features (list): [K x d] list of feature coordinates to use
-
-        Returns:
-        lls (torch.Tensor): size [n x K] tensor of per-component log-likelihoods 
-        """
-        if sampled_features is not None:
-            component_lls = self.component_log_likelihood(x[:, sampled_features], 
-                                                  self.mu[:, sampled_features],
-                                                  self.W[:, sampled_features],  
-                                                  self.log_Psi[:, sampled_features],
-                                                  self.pi_logits)
-        else:
-            component_lls = self.component_log_likelihood(x,self.mu, self.W, self.log_Psi, self.pi_logits)
-
-        return component_lls
-    
-
-    def per_sample_log_likelihood(self, x, sampled_features=None):
+    def log_prob(self, x:torch.Tensor) -> torch.Tensor:
         """
         Computes the per-sample log-likelihoods.
 
-        Parameters:
-        x (torch.Tensor): [n x d] tensor of input data
-        sampled_features (list): [K x d] list of feature coordinates to use
+        Args:
+            x (torch.Tensor): (n, d) tensor of input data.
 
         Returns:
-        sample_lls (torch.Tensor): size [n] tensor of per-sample log-likelihoods 
+            log_probs (torch.Tensor): (n,) tensor of per-sample log-likelihoods. 
         """
-        sample_lls = torch.logsumexp(self.per_component_log_likelihood(x, sampled_features), dim=1)
 
-        return sample_lls
+        log_probs = torch.logsumexp(self.component_log_prob(x), dim=1)
 
-
-    def log_prob(self, x):
-        x = x.reshape(x.shape[0], -1)
-        return self.per_sample_log_likelihood(x)
+        return log_probs
     
 
-    def responsibilities(self, x, sampled_features=None):
+    def responsibilities(self, x):
         """
         Compute the responsibility of each component for generating each sample.
 
@@ -174,28 +147,11 @@ class MPPCA(torch.nn.Module):
         Returns:
         responsibilities (torch.Tensor): size [n x K] tensor of component responsibilities
         """
-        comp_LLs = self.per_component_log_likelihood(x, sampled_features)
-        log_responsibilities = comp_LLs - self.per_sample_log_likelihood(x, sampled_features).reshape(-1, 1)
-        responsibilities = torch.exp(log_responsibilities)
+        component_log_probs = self.component_log_prob(x)
+        log_probs = self.log_prob(x).reshape(-1, 1)
+        responsibilities = torch.exp(component_log_probs - log_probs)
         
         return responsibilities
-
-
-    def map_component(self, x, sampled_features=None):
-        """
-        Return the maximum a posteriori (MAP) component numbers.
-
-        Parameters:
-        x (torch.Tensor): [n x d] tensor of input data
-        sampled_features (list): [K x d] list of feature coordinates to use
-
-        Returns:
-        map_components (torch.Tensor): size [n] tensor of MAP component assignments
-        """
-        map_components = torch.argmax(self.responsibilities(x, sampled_features), dim=1)
-
-        return map_components
-
 
     def small_sample_ppca(self, x, n_factors):
         """
@@ -227,7 +183,7 @@ class MPPCA(torch.nn.Module):
         return mu, W, torch.log(sigma2) * torch.ones(x.shape[1], device=self.mu.device)
 
     
-    def init_from_data(self, x, samples_per_component, feature_sampling=False):
+    def init_from_data(self, x):
         """
         Initialize the parameter values by first assigning data points to 
         component clusters (using either K-Means or random assignment) and then
@@ -242,24 +198,26 @@ class MPPCA(torch.nn.Module):
         """
         n = x.shape[0]
         K, d, l = self.W.shape
+   
+        t = time.time()
+        print('Performing K-means clustering of {} samples with {} dimensions to {} clusters...'.format(
+            x.shape[0], x.shape[1], K))
+        _x = x.cpu().numpy()
+        
+        def kmeans_with_min_cluster_size(x, n_clusters, min_size, max_attempts=10):
+            for i in range(max_attempts):
+                clusters = KMeans(n_clusters=n_clusters, max_iter=300, random_state=i).fit(x)
+                _, counts = np.unique(clusters.labels_, return_counts=True)
 
-        if self.init_method == 'kmeans':
-            if feature_sampling:
-                sampled_features = torch.multinomial(torch.ones(d), int(d*feature_sampling), replacement=False) 
-            else:
-                sampled_features = torch.arange(d)
-            t = time.time()
-            print('Performing K-means clustering of {} samples with {} dimensions to {} clusters...'.format(
-                x.shape[0], sampled_features.shape[0], K))
-            _x = x[:, sampled_features].cpu().numpy()
-            clusters = KMeansConstrained(n_clusters=K, size_min=self.n_factors, max_iter=300, random_state=0).fit(_x)
-            print('... took {:.4f} sec'.format(time.time() - t))
-            component_samples = [clusters.labels_ == i for i in range(K)]
-        elif self.init_method == 'rnd_samples':
-            m = samples_per_component
-            o = torch.multinomial(torch.ones(n), m*K, replacement=False) if m*K < n else torch.arange(n)
-            assert n >= m*K
-            component_samples = [[o[i*m:(i+1)*m]] for i in range(K)]
+                if np.all(counts >= min_size):
+                    return clusters  # Valid clustering found
+
+            raise ValueError("Could not find a valid clustering satisfying the minimum size constraint.")
+    
+        clusters = kmeans_with_min_cluster_size(_x, n_clusters=K, min_size=self.n_factors, max_attempts=10)
+
+        print('... took {:.4f} sec'.format(time.time() - t))
+        component_samples = [clusters.labels_ == i for i in range(K)]
 
         params = [torch.stack(t) for t in zip(
             *[self.small_sample_ppca(x[component_samples[i]], n_factors=l) for i in range(K)])]
@@ -269,7 +227,7 @@ class MPPCA(torch.nn.Module):
         self.log_Psi.data = params[2]
 
 
-    def fit(self, x, max_iterations=20, feature_sampling=False):
+    def fit(self, x, max_iterations=20):
         """
         Estimate maximum-likelihood MPPCA paramters for the complete dataset 
         using the Expectation Maximization algorithm from Tipping and Bishop 
@@ -284,16 +242,14 @@ class MPPCA(torch.nn.Module):
         Returns:
         lls (list): the per-iteration average log-likelihood values
         """
-        assert not feature_sampling or type(feature_sampling) == float, 'set to desired sampling ratio'
+
         K, d, l = self.W.shape
         N = x.shape[0]
 
         x = x.to(self.mu.device)
         print('Initializing parameter values...')
-        init_samples_per_component = (l+1)*2 if self.init_method == 'rnd_samples' else (l+1)*10
-        self.init_from_data(x, samples_per_component=init_samples_per_component,
-                             feature_sampling=feature_sampling)
-        print('Initial log-likelihood = {:.4f}'.format(torch.mean(self.per_sample_log_likelihood(x)).item()))
+        self.init_from_data(x)
+        print('Initial log-likelihood = {:.4f}'.format(torch.mean(self.log_prob(x)).item()))
 
         # All equations and appendices reference Tipping and Bishop (1999) [1]
         def per_component_m_step(i):
@@ -323,8 +279,7 @@ class MPPCA(torch.nn.Module):
         lls = []
         for it in range(max_iterations):
             t = time.time()
-            sampled_features = np.random.choice(d, int(d*feature_sampling)) if feature_sampling else None
-            r = self.responsibilities(x, sampled_features=sampled_features)
+            r = self.responsibilities(x)
             r_sum = torch.sum(r, dim=0)
             new_params = [torch.stack(t) for t in zip(*[per_component_m_step(i) for i in range(K)])]
             self.mu.data = new_params[0]
@@ -336,7 +291,7 @@ class MPPCA(torch.nn.Module):
 
             #self.pi_logits.data = torch.log(r_sum / torch.sum(r_sum))
             self.pi_logits.data = torch.log(normalized_pi)
-            ll = torch.mean(self.per_sample_log_likelihood(x)).item()
+            ll = torch.mean(self.log_prob(x)).item()
             print('Iteration {}/{}, train log-likelihood = {:.4f}, took {:.4f} sec'.format(
                 it+1, max_iterations, ll, time.time()-t))
             lls.append(ll)
@@ -344,7 +299,7 @@ class MPPCA(torch.nn.Module):
 
 
     def batch_fit(self, train_dataset, test_dataset=None, batch_size=1000, test_size=1000, 
-                  max_iterations=20, feature_sampling=False):
+                  max_iterations=20):
         """
         Estimate maximum-likelihood MPPCA paramters for the complete dataset 
         using the Expectation Maximization algorithm from Tipping and Bishop 
@@ -365,22 +320,18 @@ class MPPCA(torch.nn.Module):
         test_size (int): the number of samples to use when reporting the likelihood
         max_iterations (int): the number of EM algorithm iterations (analogous 
             to epochs in the batch case)
-        feature_sampling (float or False): if float, denotes the fraction of
-            total features to sample to speed up responsibility calculation
 
         Returns:
         lls (list): the per-iteration average log-likelihood values
-       """
-        assert not feature_sampling or type(feature_sampling) == float, 'set to desired sampling ratio'
+        """
+
         K, d, l = self.W.shape
 
-        init_samples_per_component = (l+1)*2 if self.init_method == 'rnd_samples' else (l+1)*10
-        print('Random initialization using {}...'.format(self.init_method))
-        init_keys = [key for i, key in enumerate(RandomSampler(train_dataset)) if i < init_samples_per_component*K]
+        n_init_samples = 10000
+        print('Random initialization using KMeans...')
+        init_keys = [key for i, key in enumerate(RandomSampler(train_dataset)) if i < n_init_samples]
         init_samples, _ = zip(*[train_dataset[key] for key in init_keys])
-        self.init_from_data(torch.stack(init_samples).to(self.mu.device),
-                             samples_per_component=init_samples_per_component,
-                             feature_sampling=feature_sampling)
+        self.init_from_data(torch.stack(init_samples).to(self.mu.device))
 
         # Read some test samples for test likelihood calculation
         test_dataset = test_dataset or train_dataset
@@ -406,14 +357,13 @@ class MPPCA(torch.nn.Module):
             sum_r_x_x_W = torch.zeros(size=[K, d, l], dtype=torch.float64, device=self.mu.device)
             sum_r_norm_x = torch.zeros(K, dtype=torch.float64, device=self.mu.device)
 
-            lls.append(torch.mean(self.per_sample_log_likelihood(test_samples)).item())
+            lls.append(torch.mean(self.log_prob(test_samples)).item())
             print('Iteration {}/{}, log-likelihood={:.4f}:'.format(it+1, max_iterations, lls[-1]))
 
             for batch_x, _ in loader:
                 print('E', end='', flush=True)
                 batch_x = batch_x.to(self.mu.device)
-                sampled_features = np.random.choice(d, int(d*feature_sampling)) if feature_sampling else None
-                batch_r = self.responsibilities(batch_x, sampled_features=sampled_features)
+                batch_r = self.responsibilities(batch_x)
                 sum_r += torch.sum(batch_r, dim=0).double()
                 sum_r_norm_x += torch.sum(batch_r * torch.sum(torch.pow(batch_x, 2.0), dim=1, keepdim=True), dim=0).double()
                 for i in range(K):
@@ -442,7 +392,7 @@ class MPPCA(torch.nn.Module):
 
             print(' ({:.4f} sec)'.format(time.time()-t))
 
-        lls.append(torch.mean(self.per_sample_log_likelihood(test_samples)).item())
+        lls.append(torch.mean(self.log_prob(test_samples)).item())
         print('\nFinal train log-likelihood={:.4f}:'.format(lls[-1]))
 
         return lls
