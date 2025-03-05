@@ -12,7 +12,7 @@ from torchcfm.utils import torch_wrapper
 from torchdyn.core import DEFunc, NeuralODE
 #from cnf import compute_log_probs
 
-from models.mppca import LowRankMixtureModel
+from models.mppca import MPPCA
 
 # color-blind friendly palette
 pastelBlue = "#0072B2"
@@ -234,7 +234,7 @@ def infiniteloop(dataloader):
   
 
 def sample_base(base, N, image_shape, with_noise):
-    if type(base) == LowRankMixtureModel:
+    if type(base) == MPPCA:
         samples = base.sample(N, with_noise=with_noise)[0].view(
             N, image_shape[-1], image_shape[0], image_shape[1])
     else:

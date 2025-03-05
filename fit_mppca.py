@@ -5,16 +5,16 @@ import os
 from PIL import Image
 import time
 import torch
-from torchvision.datasets import CelebA, MNIST, CIFAR10, FGVCAircraft
+from torchvision.datasets import CelebA, FashionMNIST, CIFAR10, FGVCAircraft
 import torchvision.transforms as transforms
 
-from models.mppca import LowRankMixtureModel
+from models.mppca import MPPCA
 from utils.utils import CropTransform, ReshapeTransform, samples_to_mosaic, visualize_mixture
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--dataset', type=str, default='mnist',
-                    choices=['mnist', 'celeba', 'cifar10', 'fgvc-aircraft'])
+parser.add_argument('--dataset', type=str, default='fashion-mnist',
+                    choices=['fashion-mnist', 'celeba', 'cifar10', 'fgvc-aircraft'])
 parser.add_argument('--fit_method', type=str, default='batch_em',
                     choices=['batch_em', 'em'])
 parser.add_argument('--n_components', type=int, default=100)
@@ -29,8 +29,8 @@ if args.dataset == 'celeba':
     n_factors = args.n_factors
     batch_size = 1000
     num_iterations = 5
-    feature_sampling = 0.3
-    init_method = 'rnd_samples'
+    feature_sampling = False
+    init_method = 'kmeans'
     trans = transforms.Compose(
         [
             CropTransform((25, 50, 25+128, 50+128)), 
@@ -85,7 +85,7 @@ elif args.dataset == "fgvc-aircraft":
     train_set = FGVCAircraft(root='./data', split = 'trainval', transform=trans, download=True)
     test_set = FGVCAircraft(root='./data', split='test', transform=trans, download=True)
 
-elif args.dataset == 'mnist':
+elif args.dataset == 'fashion-mnist':
     image_shape = [28, 28]
     n_components = args.n_components
     n_factors = args.n_factors
@@ -93,20 +93,21 @@ elif args.dataset == 'mnist':
     num_iterations = 20
     feature_sampling = False
     init_method = 'kmeans'
+
     trans = transforms.Compose(
         [
-            transforms.ToTensor(),  
-            transforms.Normalize((0.5,), (0.5,)),
+            transforms.ToTensor(),
             ReshapeTransform([-1])
         ]
     )
-    train_set = MNIST(root='./data', train=True, transform=trans, download=True)
-    test_set = MNIST(root='./data', train=False, transform=trans, download=True)
+    train_set = FashionMNIST(root='./data', train=True, transform=trans, download=True)
+    test_set = FashionMNIST(root='./data', train=False, transform=trans, download=True)
 
 else:
     assert False, 'Unknown dataset: ' + args.dataset
 
 device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+print(device)
 
 model_dir = './results/' + args.dataset
 os.makedirs(model_dir, exist_ok=True)
@@ -115,8 +116,8 @@ figures_dir = model_dir
 #os.makedirs(figures_dir, exist_ok=True)
 model_name = 'c_{}_l_{}'.format(n_components, n_factors)
 
-print('Defining the MFA model...')
-model = LowRankMixtureModel(
+print('Defining the MPPCA model...')
+model = MPPCA(
             n_components=n_components, 
             n_features=np.prod(image_shape), 
             n_factors=n_factors,

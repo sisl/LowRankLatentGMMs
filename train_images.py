@@ -45,8 +45,8 @@ parser.add_argument("--flow", type=str, default="cfm",
                     choices=["cfm", "otcfm"])
 parser.add_argument("--dataset", type=str, default="celeba",
                     choices=["celeba", "fgvc-aircraft", "fashion"])
-parser.add_argument("--epochs", type=int, default=100)
-parser.add_argument("--patience", type=int, default=10)
+parser.add_argument("--epochs", type=int, default=50)
+parser.add_argument("--patience", type=int, default=50)
 #parser.add_argument("--data_dir", type=str, required=True)
 
 args = parser.parse_args()
@@ -160,7 +160,7 @@ else:
     raise ValueError
 
 # define the Neural ODE network
-
+'''
 model = UNetModelWrapper(
     dim=(3, 64, 64),
     num_res_blocks=2,
@@ -182,7 +182,7 @@ model = UNetModelWrapper(
     attention_resolutions="16",
     dropout=0.1,
 ).to(device)
-'''
+
 ema_model = copy.deepcopy(model)
 
 # show NODE model size
@@ -193,7 +193,7 @@ logger.info("Number of model parameters: %.2f M" % (model_size / 1024 / 1024))
 
 # define training objects
 #optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate, weight_decay=1e-6)
-optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate)#, weight_decay=1e-6)
+optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)#, weight_decay=1e-6)
 total_steps = args.epochs * len(train_loader)
 scheduler = CosineAnnealingLR(optimizer, total_steps, eta_min=1e-6)
 early_stopping = EarlyStopping(patience=args.patience, delta=1e-4, verbose=True)
@@ -224,7 +224,7 @@ elif args.base == "mppca":
         train_dataset=mppca_dataset, 
         batch_size=em_batch_size, 
         max_iterations=em_iters,
-        feature_sampling=0.5)
+        feature_sampling=False)
     end = time.time()
     logger.info(f"Number of MPPCA batch EM iterations: {em_iters}")
     logger.info(f"Final log-likelihood: {mppca_lp[-1]:.4f}")

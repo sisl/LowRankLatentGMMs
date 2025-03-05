@@ -1,1 +1,1 @@
-from .mppca import LowRankMixtureModel
+from .mppca import MPPCA

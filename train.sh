@@ -19,8 +19,8 @@
 #python3 train_images.py --base "normal" --flow "otcfm" --dataset "fashion"
 #python3 train_images.py --base "mppca" --flow "otcfm" --dataset "fashion"
 
-python3 train_images.py --base "normal" --flow "otcfm" --dataset "fgvc-aircraft"
-python3 train_images.py --base "mppca" --flow "otcfm" --dataset "fgvc-aircraft"
+#python3 train_images.py --base "normal" --flow "otcfm" --dataset "fgvc-aircraft"
+#python3 train_images.py --base "mppca" --flow "otcfm" --dataset "fgvc-aircraft"
 
 
 #python3 train_uci.py --flow "cfm" --base 'mppca' --dataset "power"
@@ -33,8 +33,8 @@ python3 train_images.py --base "mppca" --flow "otcfm" --dataset "fgvc-aircraft"
 #python3 train_uci.py --flow "otcfm" --base 'mppca' --dataset "gas"
 #python3 train_uci.py --flow "otcfm" --base 'normal' --dataset "gas"
 
-#python3 train_uci.py --flow "cfm" --base 'mppca' --dataset "hepmass"
-#python3 train_uci.py --flow "cfm" --base 'normal' --dataset "hepmass"
+python3 train_uci.py --flow "CFM" --base 'MPPCA' --dataset "HEPMASS"
+python3 train_uci.py --flow "CFM" --base 'Normal' --dataset "HEPMASS"
 #python3 train_uci.py --flow "otcfm" --base 'mppca' --dataset "hepmass"
 #python3 train_uci.py --flow "otcfm" --base 'normal' --dataset "hepmass"
 

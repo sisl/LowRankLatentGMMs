@@ -1,5 +1,5 @@
 {
-    "power": {
+    "POWER": {
         "n_features":       6,
         "n_components":     5,
         "n_factors":        3,
@@ -11,7 +11,7 @@
         "test_split":       0.1,
         "hidden_units":     32
     },
-    "gas": {
+    "GAS": {
         "n_features":       8,
         "n_components":     10,
         "n_factors":        3,
@@ -23,7 +23,7 @@
         "test_split":       0.1,
         "hidden_units":     32
     },
-    "hepmass": {
+    "HEPMASS": {
         "n_features":       21,
         "n_components":     10,
         "n_factors":        4,
@@ -35,7 +35,7 @@
         "test_split":       0.1,
         "hidden_units":     128
     },
-    "miniboone": {
+    "MINIBOONE": {
         "n_features":       43,
         "n_components":     30,
         "n_factors":        6,
@@ -47,7 +47,7 @@
         "test_split":       0.1,
         "hidden_units":     128
     },
-    "bsds300": {
+    "BSDS300": {
         "n_features":       63,
         "n_components":     30,
         "n_factors":        6,
@@ -66,7 +66,7 @@
         "em_iters":         10,
         "batch_size":       128,
         "em_batch_size":    1000,
-        "learning_rate":    1e-3,
+        "learning_rate":    2e-4,
         "num_channels":     64
     },
     "fgvc-aircraft": {
@@ -76,7 +76,7 @@
         "em_iters":         10,
         "batch_size":       64,
         "em_batch_size":    200,
-        "learning_rate":    1e-3,
+        "learning_rate":    2e-4,
         "num_channels":     64
     },
     "fashion": {
@@ -86,7 +86,7 @@
         "em_iters":         10,
         "batch_size":       128,
         "em_batch_size":    1000,
-        "learning_rate":    5e-4,
+        "learning_rate":    2e-4,
         "num_channels":     32
     }
 }

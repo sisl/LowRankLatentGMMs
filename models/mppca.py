@@ -1,14 +1,15 @@
 import numpy as np
 from sklearn.cluster import KMeans
+from k_means_constrained import KMeansConstrained
 import time
 import torch
 from torch.utils.data import DataLoader, RandomSampler
 
 
-class LowRankMixtureModel(torch.nn.Module):
+class MPPCA(torch.nn.Module):
     """
     Initialize a probabilistic model representing a Mixture of Probabilistic 
-    Principal Component Analyzers (MPPCA) [1]. This models constrain the 
+    Principal Component Analyzers (MPPCA) [1]. This model constrains the 
     covariance matrices of a Gaussian mixture model to be low-rank and diagonal.
     
     Original publication:
@@ -19,30 +20,29 @@ class LowRankMixtureModel(torch.nn.Module):
     [2] Richardson, E., & Weiss, Y. (2018). On GANs and GMMs. Advances in 
         Neural Information Processing Systems, 31.
         
-    Problem Parameters:
-        n_components (int): number of mixture components (alias: K)
-        n_features (int): number of input dimensions (alias: d)
-        n_factors (int): number of underlying factors (alias: l)
-        init_method: (str): initialization method: 'kmeans' or 'rnd_samples'
+    Args:
+        n_components (int): number of mixture components (alias: k).
+        n_features (int): number of input dimensions (alias: d).
+        n_factors (int): number of underlying factors (alias: l).
     
     Learnable Parameters:
-        mu (torch.Tensor): [K x d] tensor of component mean vectors
-        W (torch.Tensor): [K x d x l] tensor of factor loading matrices
-        log_Psi (torch.Tensor): [K x d] tensor of log diagonal noise values
-        pi_logits (torch.Tensor): [K] tensor of mixing proportion logits
-
+        mu (torch.Tensor): (k, d) tensor of component mean vectors.
+        W (torch.Tensor): (k, d, l) tensor of factor loading matrices.
+        log_Psi (torch.Tensor): (k, d) tensor of log diagonal noise values.
+        pi_logits (torch.Tensor): (k,) tensor of mixing proportion logits.
     """
+
     def __init__(self, n_components, n_features, n_factors, init_method='rnd_samples'):
-        super(LowRankMixtureModel, self).__init__()
+        super(MPPCA, self).__init__()
         self.n_components = n_components
         self.n_features = n_features
         self.n_factors = n_factors
         self.init_method = init_method
 
-        self.mu = torch.nn.Parameter(torch.zeros(n_components, n_features), requires_grad=False)
-        self.W = torch.nn.Parameter(torch.zeros(n_components, n_features, n_factors), requires_grad=False)
-        self.log_Psi = torch.nn.Parameter(torch.zeros(n_components, n_features), requires_grad=False)
-        self.pi_logits = torch.nn.Parameter(torch.log(torch.ones(n_components)/float(n_components)), requires_grad=False)
+        self.mu = torch.zeros(n_components, n_features)
+        self.W = torch.zeros(n_components, n_features, n_factors)
+        self.log_Psi = torch.zeros(n_components, n_features)
+        self.pi_logits = torch.log(torch.ones(n_components)/float(n_components))
 
 
     def sample(self, n, fixed_component=None, with_noise=False):
@@ -252,7 +252,7 @@ class LowRankMixtureModel(torch.nn.Module):
             print('Performing K-means clustering of {} samples with {} dimensions to {} clusters...'.format(
                 x.shape[0], sampled_features.shape[0], K))
             _x = x[:, sampled_features].cpu().numpy()
-            clusters = KMeans(n_clusters=K, max_iter=300, random_state=0).fit(_x)
+            clusters = KMeansConstrained(n_clusters=K, size_min=self.n_factors, max_iter=300, random_state=0).fit(_x)
             print('... took {:.4f} sec'.format(time.time() - t))
             component_samples = [clusters.labels_ == i for i in range(K)]
         elif self.init_method == 'rnd_samples':
@@ -338,7 +338,7 @@ class LowRankMixtureModel(torch.nn.Module):
             self.pi_logits.data = torch.log(normalized_pi)
             ll = torch.mean(self.per_sample_log_likelihood(x)).item()
             print('Iteration {}/{}, train log-likelihood = {:.4f}, took {:.4f} sec'.format(
-                it, max_iterations, ll, time.time()-t))
+                it+1, max_iterations, ll, time.time()-t))
             lls.append(ll)
         return lls
 
@@ -407,7 +407,7 @@ class LowRankMixtureModel(torch.nn.Module):
             sum_r_norm_x = torch.zeros(K, dtype=torch.float64, device=self.mu.device)
 
             lls.append(torch.mean(self.per_sample_log_likelihood(test_samples)).item())
-            print('Iteration {}/{}, log-likelihood={:.4f}:'.format(it, max_iterations, lls[-1]))
+            print('Iteration {}/{}, log-likelihood={:.4f}:'.format(it+1, max_iterations, lls[-1]))
 
             for batch_x, _ in loader:
                 print('E', end='', flush=True)
@@ -423,7 +423,6 @@ class LowRankMixtureModel(torch.nn.Module):
 
             print(' / M...', end='', flush=True)
             
-            #self.pi_logits.data = torch.log(sum_r / torch.sum(sum_r)).float()
             pi = sum_r / torch.sum(sum_r)
             normalized_pi = clip_pi(pi)
             self.pi_logits.data = torch.log(normalized_pi).float()

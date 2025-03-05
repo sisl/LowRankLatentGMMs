@@ -99,7 +99,7 @@ class ImageDataset:
                 transforms.Resize((64, 64)),
                 #transforms.Resize(self.image_shape[0]),
                 transforms.ToTensor(),
-                transforms.Normalize(mean, mean),
+                transforms.Normalize(mean, std),
                 ReshapeTransform([-1])
             ])
         elif self.dataset == "fashion":
