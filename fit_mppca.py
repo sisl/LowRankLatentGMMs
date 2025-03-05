@@ -90,7 +90,7 @@ elif args.dataset == 'fashion-mnist':
     n_components = args.n_components
     n_factors = args.n_factors
     batch_size = 1000
-    num_iterations = 20
+    num_iterations = 10
     feature_sampling = False
     init_method = 'kmeans'
 

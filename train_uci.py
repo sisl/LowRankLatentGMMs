@@ -23,13 +23,11 @@ from torchcfm.conditional_flow_matching import (
 from torchcfm.models.models import MLP
 
 # file imports
-from evaluation.cnf_metrics import cnf_test_metrics
 from models.mppca import MPPCA
 from models.cnf import cnf_test_metrics, torch_wrapper
-from utils.datasets import create_data_loaders
 from utils.early_stopping import EarlyStopping
 from utils.utils import plot_data, load_config
-
+from datasets.uci import UCIDataset
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--base", type=str, default="Normal",
@@ -38,7 +36,7 @@ parser.add_argument("--flow", type=str, default="CFM",
                     choices=["CFM", "OTCFM"])
 parser.add_argument("--dataset", type=str, default="power",
                     choices=["POWER", "GAS", "HEPMASS", "MINIBOONE", "BSDS300"])
-parser.add_argument("--epochs", type=int, default=200)
+parser.add_argument("--epochs", type=int, default=100)
 parser.add_argument("--patience", type=int, default=10)
 parser.add_argument("--n_trials", type=int, default=2)
 args = parser.parse_args()
@@ -73,7 +71,8 @@ data_dir = "data/uci/"
 data_path = os.path.join(data_dir, args.dataset + ".npy")
 
 print("Reading in data...")
-train_loader, val_loader, test_loader = create_data_loaders(data_path, batch_size)
+dataset = UCIDataset(data_path)
+train_loader, val_loader, test_loader = dataset.get_dataloaders(batch_size)
 
 # read in dataset as tensor dataset for fitting MPPCA base
 if args.base == "MPPCA":
@@ -161,10 +160,15 @@ base_fit_times = torch.zeros(args.n_trials)
 flow_train_times = torch.zeros(args.n_trials)
 
 
+print("\n****************************************")
+print(f"Fitting {args.flow} with a {args.base} base.")
+print(f"Dataset: {args.dataset} with {args.n_features} dimensions.")
+print("****************************************\n")
 for trial in range(args.n_trials):
-    #*******************************************************************************
+    torch.manual_seed(trial)
+    #***************************************************************************
     # set up models and optimizers
-    #*******************************************************************************
+    #***************************************************************************
     # set up flow matcher model
     if args.flow == "CFM":
         flow_matcher = ConditionalFlowMatcher(sigma=0.1)
@@ -185,9 +189,9 @@ for trial in range(args.n_trials):
     early_stopping = EarlyStopping(patience=args.patience, delta=1e-4, verbose=True)
 
 
-    #*******************************************************************************
+    #***************************************************************************
     # construct base distribution
-    #*******************************************************************************
+    #***************************************************************************
     if args.base == "Normal":
         base_distribution = MultivariateNormal(
             torch.zeros(n_features).to(device), 
@@ -214,12 +218,10 @@ for trial in range(args.n_trials):
     else:
         raise ValueError
 
-
-    #*******************************************************************************
+    #***************************************************************************
     # main training loop
-    #*******************************************************************************
-    torch.manual_seed(trial)
-    print("--------------------")
+    #***************************************************************************
+    print("----------------------------------------")
     start = time.time()
     epochs = 0
     for epoch in range(args.epochs):
@@ -252,24 +254,24 @@ for trial in range(args.n_trials):
                 val_loss += compute_loss(x0, x1, flow_matcher, model).item()
                 
         val_loss /= len(val_loader)
-        print("--------------------")
+        print("----------------------------------------")
         print(f"Epoch {epoch + 1}/{args.epochs}, Val Loss: {val_loss:.4f}")
         early_stopping(val_loss)
         if early_stopping.early_stop:
             print(f"Stopping early at epoch {epoch + 1}")
             break
-        print("--------------------")
+        print("----------------------------------------")
 
     end = time.time()
     flow_train_time = end - start
     print("Total training time: {:0.2f} s".format(flow_train_time))
-    print("--------------------")
+    print("----------------------------------------")
 
     torch.save(model.state_dict(), os.path.join(results_dir, 'model.pt'))
 
-    #*******************************************************************************
+    #***************************************************************************
     # model evaluation
-    #*******************************************************************************
+    #***************************************************************************
     model.eval()
 
     node = NeuralODE(
@@ -280,19 +282,19 @@ for trial in range(args.n_trials):
         rtol=1e-4
     )
 
-    avg_lps = []
-    nfes = []
+    avg_log_probs = []
+    avg_NFEs = []
     for batch in tqdm(test_loader, desc="Computing test metrics"):
         test_samples = batch.to(device)
-        avg_lp, nfe = cnf_test_metrics(model, test_samples, device, base_distribution)
-        avg_lps.append(avg_lp)
-        nfes.append(nfe)
+        avg_log_prob, avg_NFE = cnf_test_metrics(model, test_samples, device, base_distribution)
+        avg_log_probs.append(avg_log_prob)
+        avg_NFEs.append(avg_NFE)
 
-    std_ll, mean_ll = torch.std_mean(torch.tensor(avg_lps))
-    std_nfe, mean_nfe = torch.std_mean(torch.tensor(nfes))
+    std_log_prob, mean_log_prob = torch.std_mean(torch.tensor(avg_log_probs))
+    std_NFE, mean_NFE = torch.std_mean(torch.tensor(avg_NFEs))
 
-    print(f"test log-likelihood: {mean_ll:.4f} ± {std_ll:.4f}")
-    print(f"test NFE: {mean_nfe:.4f} ± {std_nfe:.4f}")
+    print(f"test log-likelihood: {mean_log_prob:.4f} ± {std_log_prob:.4f}")
+    print(f"test NFE: {mean_NFE:.4f} ± {std_NFE:.4f}")
 
     # read in test data for plotting real vs. generated samples
     test_data = []
@@ -314,8 +316,8 @@ for trial in range(args.n_trials):
     plot_data(5, model_samples[:500], axes[:, :], color="r")
     plt.savefig(os.path.join(results_dir, "data_vs_samples.png"))
 
-    log_probs[trial] = mean_ll
-    NFEs[trial] = mean_nfe
+    log_probs[trial] = mean_log_prob
+    NFEs[trial] = mean_NFE
     total_epochs[trial] = epochs
     base_fit_times[trial] = base_fit_time
     flow_train_times[trial] = flow_train_time
