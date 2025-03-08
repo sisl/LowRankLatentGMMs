@@ -37,10 +37,10 @@ class MPPCA(torch.nn.Module):
         self.n_features = n_features
         self.n_factors = n_factors
 
-        self.mu = torch.zeros(n_components, n_features)
-        self.W = torch.zeros(n_components, n_features, n_factors)
-        self.log_Psi = torch.zeros(n_components, n_features)
-        self.pi_logits = torch.log(torch.ones(n_components)/float(n_components))
+        self.mu = torch.nn.Parameter(torch.zeros(n_components, n_features), requires_grad=False)
+        self.W = torch.nn.Parameter(torch.zeros(n_components, n_features, n_factors), requires_grad=False)
+        self.log_Psi = torch.nn.Parameter(torch.zeros(n_components, n_features), requires_grad=False)
+        self.pi_logits = torch.nn.Parameter(torch.log(torch.ones(n_components)/float(n_components)), requires_grad=False)
 
 
     def sample(self, n, fixed_component=None, with_noise=False):
@@ -204,7 +204,7 @@ class MPPCA(torch.nn.Module):
             x.shape[0], x.shape[1], K))
         _x = x.cpu().numpy()
         
-        def kmeans_with_min_cluster_size(x, n_clusters, min_size, max_attempts=10):
+        def kmeans_with_min_cluster_size(x, n_clusters, min_size, max_attempts=20):
             for i in range(max_attempts):
                 clusters = KMeans(n_clusters=n_clusters, max_iter=300, random_state=i).fit(x)
                 _, counts = np.unique(clusters.labels_, return_counts=True)

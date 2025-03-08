@@ -27,7 +27,7 @@
         "n_features":       21,
         "n_components":     10,
         "n_factors":        4,
-        "em_iters":         50,
+        "em_iters":         10,
         "batch_size":       256,
         "learning_rate":    5e-4,
         "train_split":      0.8,
@@ -64,22 +64,24 @@
         "n_components":     50,
         "n_factors":        10,
         "em_iters":         10,
-        "batch_size":       128,
+        "batch_size":       256,
         "em_batch_size":    1000,
-        "learning_rate":    1e-3,
+        "learning_rate":    2e-4,
         "num_channels":     64,
         "num_res_blocks":   1,
         "channel_mult":     [1, 2, 2, 2]
     },
     "fgvc-aircraft": {
-        "image_shape":      [64, 64, 3],
+        "image_shape":      [32, 32, 3],
         "n_components":     50,
         "n_factors":        10,
         "em_iters":         10,
         "batch_size":       64,
         "em_batch_size":    200,
-        "learning_rate":    1e-3,
-        "num_channels":     64
+        "learning_rate":    2e-4,
+        "num_channels":     64,
+        "num_res_blocks":   1,
+        "channel_mult":     [1, 2, 2, 2]
     },
     "fashion": {
         "image_shape":      [28, 28, 1],

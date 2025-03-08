@@ -15,7 +15,7 @@ import time
 import torch
 from torch.distributions import MultivariateNormal
 from torch.nn.utils import clip_grad_norm_
-from torch.optim.lr_scheduler import CosineAnnealingLR
+from torch.optim.lr_scheduler import LambdaLR
 from torchdyn.core import NeuralODE
 from torchvision.utils import save_image
 from tqdm import tqdm
@@ -42,11 +42,17 @@ parser.add_argument("--base", type=str, default="Normal",
 parser.add_argument("--flow", type=str, default="CFM",
                     choices=["CFM", "OTCFM"])
 parser.add_argument("--dataset", type=str, default="fashion",
-                    choices=["fashion", "celeba"])
-parser.add_argument("--epochs", type=int, default=50)
-parser.add_argument("--patience", type=int, default=50)
-parser.add_argument("--n_trials", type=int, default=1)
+                    choices=["fashion", "celeba", "fgvc-aircraft"])
+parser.add_argument("--epochs", type=int, default=20)
+parser.add_argument("--patience", type=int, default=20)
+parser.add_argument("--n_trials", type=int, default=3)
 args = parser.parse_args()
+
+# KEEP 20
+# 
+warmup = 2000
+def warmup_lr(step):
+    return min(step, warmup) / warmup
 
 device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 
@@ -168,7 +174,7 @@ base_fit_times = torch.zeros(args.n_trials)
 flow_train_times = torch.zeros(args.n_trials)
 
 print("\n****************************************")
-print(f"Fitting {args.flow} with a {args.base} base.")
+print(f"Training {args.flow} model with {args.base} base distribution.")
 print(f"Dataset: {args.dataset} with {n_features} dimensions.")
 print("****************************************\n")
 
@@ -179,9 +185,9 @@ for trial in range(args.n_trials):
     #*******************************************************************************
     # set up flow matcher model
     if args.flow == "CFM":
-        flow_matcher = ConditionalFlowMatcher(sigma=0.0)
+        flow_matcher = ConditionalFlowMatcher(sigma=0.1)
     elif args.flow == "OTCFM":
-        flow_matcher = ExactOptimalTransportConditionalFlowMatcher(sigma=0.0)
+        flow_matcher = ExactOptimalTransportConditionalFlowMatcher(sigma=0.1)
     else:
         raise ValueError
 
@@ -207,9 +213,9 @@ for trial in range(args.n_trials):
     print("Number of model parameters: %.2f M" % (model_size / 1024 / 1024))
 
     # define training objects
-    optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate)
+    optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
     total_steps = args.epochs * len(train_loader)
-    scheduler = CosineAnnealingLR(optimizer, total_steps, eta_min=1e-4)
+    scheduler = LambdaLR(optimizer, lr_lambda=warmup_lr)
     early_stopping = EarlyStopping(patience=args.patience, delta=1e-4, verbose=True)
 
 
@@ -263,7 +269,7 @@ for trial in range(args.n_trials):
             clip_grad_norm_(model.parameters(), 1.)
             optimizer.step()
             scheduler.step()
-            ema(model, ema_model, 0.999)
+            ema(model, ema_model, 0.9995)
 
         ema_model.eval()
         model.eval()
