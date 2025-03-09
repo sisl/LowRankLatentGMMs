@@ -45,7 +45,7 @@ parser.add_argument("--flow", type=str, default="CFM",
                     choices=["CFM", "OTCFM", "VPCFM"])
 parser.add_argument("--dataset", type=str, default="fashion",
                     choices=["fashion", "celeba", "fgvc-aircraft"])
-parser.add_argument("--epochs", type=int, default=200)
+parser.add_argument("--epochs", type=int, default=50)
 parser.add_argument("--patience", type=int, default=10)
 parser.add_argument("--n_trials", type=int, default=1)
 args = parser.parse_args()
@@ -217,7 +217,7 @@ for trial in range(args.n_trials):
     print("Number of model parameters: %.2f M" % (model_size / 1024 / 1024))
 
     # define training objects
-    optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
+    optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate)
     total_steps = args.epochs * len(train_loader)
     scheduler = LambdaLR(optimizer, lr_lambda=warmup_lr)
     early_stopping = EarlyStopping(patience=args.patience, delta=1e-4, verbose=True)
@@ -273,7 +273,8 @@ for trial in range(args.n_trials):
             clip_grad_norm_(model.parameters(), 1.)
             optimizer.step()
             scheduler.step()
-            ema(model, ema_model, 0.9999)
+            if i % 16 == 0:
+                ema(model, ema_model, 0.9995)
 
         ema_model.eval()
         model.eval()

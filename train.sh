@@ -21,7 +21,7 @@
 
 #python3 train_images.py --base "MPPCA" --flow "CFM" --dataset "celeba"
 #python3 train_images.py --base "Normal" --flow "CFM" --dataset "celeba"
-python3 train_images.py --base "MPPCA" --flow "OTCFM" --dataset "celeba"
+#python3 train_images.py --base "MPPCA" --flow "OTCFM" --dataset "celeba"
 python3 train_images.py --base "Normal" --flow "OTCFM" --dataset "celeba"
 
 #python3 train_images.py --base "MPPCA" --flow "CFM" --dataset "fgvc-aircraft"
