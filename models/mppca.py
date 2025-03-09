@@ -57,10 +57,19 @@ class MPPCA(torch.nn.Module):
             component that generated each sample
         """
         K, d, l = self.W.shape
+        # sample mixture components
+        def clip_pi(pi, min_weight=1e-3):
+            # Ensure no weight is below the minimum
+            clipped_pi = torch.clamp(pi, min=min_weight)
+            # Renormalize the weights to sum to 1
+            normalized_pi = clipped_pi / clipped_pi.sum(dim=-1, keepdim=True)
+            return normalized_pi
+        
+        pi = clip_pi(torch.softmax(self.pi_logits, dim=0))
         if fixed_component:
             components = fixed_component
         else:
-            components = torch.multinomial(torch.softmax(self.pi_logits, dim=0), n, replacement=True)
+            components = torch.multinomial(pi, n, replacement=True)
         z_l = torch.randn(n, l, device=self.W.device)
 
         if with_noise:
@@ -266,10 +275,12 @@ class MPPCA(torch.nn.Module):
             t1 = torch.trace(Wi_new.T @ (SiWi @ inv_Mi))
             trace_Si = torch.sum(N/r_sum[i] * torch.mean(r[:, [i]]*x_c*x_c, dim=0))
             sigma_2_new = (trace_Si - t1)/d
+            if sigma_2_new < 1e-6: # prevent taking log of small numbers
+                sigma_2_new += 1e-6
 
             return mui_new, Wi_new, torch.log(sigma_2_new) * torch.ones_like(self.log_Psi[i])
 
-        def clip_pi(pi, min_weight=1e-4):
+        def clip_pi(pi, min_weight=1e-3):
             # Ensure no weight is below the minimum
             clipped_pi = torch.clamp(pi, min=min_weight)
             # Renormalize the weights to sum to 1
@@ -281,6 +292,8 @@ class MPPCA(torch.nn.Module):
             t = time.time()
             r = self.responsibilities(x)
             r_sum = torch.sum(r, dim=0)
+            if any(r_sum < 1e-6): # prevent division by zero
+                r_sum += 1e-6
             new_params = [torch.stack(t) for t in zip(*[per_component_m_step(i) for i in range(K)])]
             self.mu.data = new_params[0]
             self.W.data = new_params[1]
@@ -341,7 +354,7 @@ class MPPCA(torch.nn.Module):
         lls = []
         loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=4)
 
-        def clip_pi(pi, min_weight=1e-4):
+        def clip_pi(pi, min_weight=1e-3):
             # Ensure no weight is below the minimum
             clipped_pi = torch.clamp(pi, min=min_weight)
             # Renormalize the weights to sum to 1

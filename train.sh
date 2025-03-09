@@ -14,20 +14,20 @@
 #python3 train_images.py --base "mppca" --flow "cfm" --dataset "fgvc-aircraft" --data_dir "./data/fgvc-aircraft-2013b/data/images/"
 #python3 train_images.py --base "normal" --flow "cfm" --dataset "fgvc-aircraft" --data_dir "./data/fgvc-aircraft-2013b/data/images/"
 
-#python3 train_images.py --base "Normal" --flow "CFM" --dataset "fashion"
-#python3 train_images.py --base "MPPCA" --flow "CFM" --dataset "fashion"
+#python3 train_images.py --base "Normal" --flow "VPCFM" --dataset "fashion"
+#python3 train_images.py --base "MPPCA" --flow "VPCFM" --dataset "fashion"
 #python3 train_images.py --base "Normal" --flow "OTCFM" --dataset "fashion"
 #python3 train_images.py --base "MPPCA" --flow "OTCFM" --dataset "fashion"
 
-python3 train_images.py --base "MPPCA" --flow "CFM" --dataset "celeba"
-python3 train_images.py --base "Normal" --flow "CFM" --dataset "celeba"
+#python3 train_images.py --base "MPPCA" --flow "CFM" --dataset "celeba"
+#python3 train_images.py --base "Normal" --flow "CFM" --dataset "celeba"
 python3 train_images.py --base "MPPCA" --flow "OTCFM" --dataset "celeba"
 python3 train_images.py --base "Normal" --flow "OTCFM" --dataset "celeba"
 
-python3 train_images.py --base "MPPCA" --flow "CFM" --dataset "fgvc-aircraft"
-python3 train_images.py --base "Normal" --flow "CFM" --dataset "fgvc-aircraft"
-python3 train_images.py --base "MPPCA" --flow "OTCFM" --dataset "fgvc-aircraft"
-python3 train_images.py --base "Normal" --flow "OTCFM" --dataset "fgvc-aircraft"
+#python3 train_images.py --base "MPPCA" --flow "CFM" --dataset "fgvc-aircraft"
+#python3 train_images.py --base "Normal" --flow "CFM" --dataset "fgvc-aircraft"
+#python3 train_images.py --base "MPPCA" --flow "OTCFM" --dataset "fgvc-aircraft"
+#python3 train_images.py --base "Normal" --flow "OTCFM" --dataset "fgvc-aircraft"
 
 #python3 train_uci.py --flow "CFM" --base 'MPPCA' --dataset "POWER"
 #python3 train_uci.py --flow "CFM" --base 'Normal' --dataset "POWER"

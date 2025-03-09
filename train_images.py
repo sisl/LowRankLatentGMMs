@@ -16,6 +16,7 @@ import torch
 from torch.distributions import MultivariateNormal
 from torch.nn.utils import clip_grad_norm_
 from torch.optim.lr_scheduler import LambdaLR
+from torch.utils.data import DataLoader
 from torchdyn.core import NeuralODE
 from torchvision.utils import save_image
 from tqdm import tqdm
@@ -24,7 +25,8 @@ from tqdm import tqdm
 # torchcfm imports
 from torchcfm.conditional_flow_matching import (
     ConditionalFlowMatcher,
-    ExactOptimalTransportConditionalFlowMatcher
+    ExactOptimalTransportConditionalFlowMatcher,
+    VariancePreservingConditionalFlowMatcher
 )
 from torchcfm.models.unet.unet import UNetModelWrapper
 
@@ -40,17 +42,17 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--base", type=str, default="Normal",
                     choices=["Normal", "MPPCA"])
 parser.add_argument("--flow", type=str, default="CFM",
-                    choices=["CFM", "OTCFM"])
+                    choices=["CFM", "OTCFM", "VPCFM"])
 parser.add_argument("--dataset", type=str, default="fashion",
                     choices=["fashion", "celeba", "fgvc-aircraft"])
-parser.add_argument("--epochs", type=int, default=20)
-parser.add_argument("--patience", type=int, default=20)
-parser.add_argument("--n_trials", type=int, default=3)
+parser.add_argument("--epochs", type=int, default=200)
+parser.add_argument("--patience", type=int, default=10)
+parser.add_argument("--n_trials", type=int, default=1)
 args = parser.parse_args()
 
 # KEEP 20
 # 
-warmup = 2000
+warmup = 5000
 def warmup_lr(step):
     return min(step, warmup) / warmup
 
@@ -185,9 +187,11 @@ for trial in range(args.n_trials):
     #*******************************************************************************
     # set up flow matcher model
     if args.flow == "CFM":
-        flow_matcher = ConditionalFlowMatcher(sigma=0.1)
+        flow_matcher = ConditionalFlowMatcher(sigma=0.0)
     elif args.flow == "OTCFM":
-        flow_matcher = ExactOptimalTransportConditionalFlowMatcher(sigma=0.1)
+        flow_matcher = ExactOptimalTransportConditionalFlowMatcher(sigma=0.0)
+    elif args.flow == "VPCFM":
+        flow_matcher = VariancePreservingConditionalFlowMatcher(sigma=0.0)
     else:
         raise ValueError
 
@@ -269,7 +273,7 @@ for trial in range(args.n_trials):
             clip_grad_norm_(model.parameters(), 1.)
             optimizer.step()
             scheduler.step()
-            ema(model, ema_model, 0.9995)
+            ema(model, ema_model, 0.9999)
 
         ema_model.eval()
         model.eval()
@@ -282,9 +286,10 @@ for trial in range(args.n_trials):
                 samples.to(device),
                 t_span=torch.linspace(0, 1, 2, device=device),
             )
-            img = traj[-1, :]#.view([-1, 3, 64, 64])
+            img = traj[-1, :].view([-1, image_shape[-1], image_shape[0], image_shape[1]]).clip(-1,1)
             img = img * transform_std[:, None, None].to(device) + transform_mean[:, None, None].to(device)
             save_image(img, os.path.join(results_dir, f"epoch_{epoch+1}.png"), nrow=8)
+
 
         # compute validation loss
         val_loss = 0
@@ -292,7 +297,7 @@ for trial in range(args.n_trials):
             for batch in tqdm(val_loader, desc="Computing validation loss"):
                 x0 = sample_base(base=base_distribution, N=batch_size, image_shape=image_shape, with_noise=True).to(device)
                 x1 = batch[0].to(device)
-                val_loss += compute_loss(x0, x1, flow_matcher, ema_model).item()
+                val_loss += compute_loss(x0, x1, flow_matcher, model).item()
                 
         val_loss /= len(val_loader)
         print("--------------------")
@@ -302,6 +307,7 @@ for trial in range(args.n_trials):
             print(f"Stopping early at epoch {epoch + 1}")
             break
         print("--------------------")
+
 
     end = time.time()
     flow_train_time = end - start
@@ -314,16 +320,7 @@ for trial in range(args.n_trials):
     # model evaluation
     #*******************************************************************************
     ema_model.eval()
-
-    node = NeuralODE(
-        vector_field=ema_model,  
-        solver="dopri5", 
-        sensitivity="adjoint", 
-        atol=1e-4, 
-        rtol=1e-4
-    )
-
-    from torch.utils.data import DataLoader
+    node = NeuralODE(ema_model,  solver="dopri5", sensitivity="adjoint", atol=1e-4, rtol=1e-4)
 
     # read in all test data for NDB calculation
     n_bins = 200
@@ -333,15 +330,12 @@ for trial in range(args.n_trials):
     test_data = torch.cat(test_data, dim=0)
 
     N = test_data.shape[0]
-
     test_data = test_data.reshape((N, -1))
 
     # generate samples from the learned model
     base_samples = sample_base(base=base_distribution, N=N, image_shape=image_shape, with_noise=True).to(device)
 
     base_dataset = DataLoader(base_samples, batch_size=batch_size)
-
-
     model_samples = []
     for batch in tqdm(base_dataset):
         with torch.no_grad():
@@ -357,7 +351,6 @@ for trial in range(args.n_trials):
 
     # compute NDB
     ndb_evaluator = NDB(training_data=test_data, number_of_bins=n_bins, significance_level=0.05, whitening=False)
-
     results = ndb_evaluator.evaluate(model_samples, 'Validation')
 
     print("NDB/K: {:0.4f}".format(results["NDB"]/n_bins))
@@ -365,16 +358,12 @@ for trial in range(args.n_trials):
 
     NDBs[trial] = results["NDB"]/n_bins
 
+    # test NFE
     test_NFEs = []
     for batch in tqdm(test_loader):
         with torch.no_grad():
-            node = NeuralODE(
-                vector_field=ema_model,  
-                solver="dopri5", 
-                sensitivity="adjoint", 
-                atol=1e-4, 
-                rtol=1e-4
-            )
+            # node needs to be reset every time
+            node = NeuralODE(ema_model,  solver="dopri5", sensitivity="adjoint", atol=1e-4, rtol=1e-4)
             traj = node.trajectory(
                 batch[0].to(device),
                 t_span=torch.linspace(1, 0, 2, device=device),

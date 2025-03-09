@@ -64,11 +64,11 @@
         "n_components":     50,
         "n_factors":        10,
         "em_iters":         10,
-        "batch_size":       256,
+        "batch_size":       128,
         "em_batch_size":    1000,
         "learning_rate":    2e-4,
         "num_channels":     64,
-        "num_res_blocks":   1,
+        "num_res_blocks":   2,
         "channel_mult":     [1, 2, 2, 2]
     },
     "fgvc-aircraft": {
@@ -80,7 +80,7 @@
         "em_batch_size":    200,
         "learning_rate":    2e-4,
         "num_channels":     64,
-        "num_res_blocks":   1,
+        "num_res_blocks":   2,
         "channel_mult":     [1, 2, 2, 2]
     },
     "fashion": {

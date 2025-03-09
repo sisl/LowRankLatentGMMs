@@ -18,7 +18,8 @@ from tqdm import tqdm
 # torchcfm imports
 from torchcfm.conditional_flow_matching import (
     ConditionalFlowMatcher,
-    ExactOptimalTransportConditionalFlowMatcher
+    ExactOptimalTransportConditionalFlowMatcher,
+    VariancePreservingConditionalFlowMatcher
 )
 from torchcfm.models.models import MLP
 
@@ -33,7 +34,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--base", type=str, default="Normal",
                     choices=["Normal", "MPPCA"])
 parser.add_argument("--flow", type=str, default="CFM",
-                    choices=["CFM", "OTCFM"])
+                    choices=["CFM", "OTCFM", "VPCFM"])
 parser.add_argument("--dataset", type=str, default="power",
                     choices=["POWER", "GAS", "HEPMASS", "MINIBOONE", "BSDS300"])
 parser.add_argument("--epochs", type=int, default=2)
@@ -174,6 +175,8 @@ for trial in range(args.n_trials):
         flow_matcher = ConditionalFlowMatcher(sigma=0.1)
     elif args.flow == "OTCFM":
         flow_matcher = ExactOptimalTransportConditionalFlowMatcher(sigma=0.1)
+    elif args.flow == "VPCFM":
+        flow_matcher = VariancePreservingConditionalFlowMatcher(sigma=0.1)
     else:
         raise ValueError
 
