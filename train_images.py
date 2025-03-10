@@ -44,10 +44,10 @@ parser.add_argument("--base", type=str, default="Normal",
 parser.add_argument("--flow", type=str, default="CFM",
                     choices=["CFM", "OTCFM", "VPCFM"])
 parser.add_argument("--dataset", type=str, default="fashion",
-                    choices=["fashion", "celeba", "fgvc-aircraft"])
+                    choices=["fashion", "celeba", "fgvc-aircraft", "cifar10"])
 parser.add_argument("--epochs", type=int, default=50)
-parser.add_argument("--patience", type=int, default=10)
-parser.add_argument("--n_trials", type=int, default=1)
+parser.add_argument("--patience", type=int, default=50)
+parser.add_argument("--n_trials", type=int, default=3)
 args = parser.parse_args()
 
 # KEEP 20
@@ -274,7 +274,7 @@ for trial in range(args.n_trials):
             optimizer.step()
             scheduler.step()
             if i % 16 == 0:
-                ema(model, ema_model, 0.9995)
+                ema(model, ema_model, 0.984)
 
         ema_model.eval()
         model.eval()
