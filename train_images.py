@@ -45,9 +45,9 @@ parser.add_argument("--flow", type=str, default="CFM",
                     choices=["CFM", "OTCFM", "VPCFM"])
 parser.add_argument("--dataset", type=str, default="fashion",
                     choices=["fashion", "celeba", "fgvc-aircraft", "cifar10"])
-parser.add_argument("--epochs", type=int, default=50)
-parser.add_argument("--patience", type=int, default=50)
-parser.add_argument("--n_trials", type=int, default=3)
+parser.add_argument("--epochs", type=int, default=100)
+parser.add_argument("--patience", type=int, default=100)
+parser.add_argument("--n_trials", type=int, default=1)
 args = parser.parse_args()
 
 # KEEP 20
@@ -291,7 +291,7 @@ for trial in range(args.n_trials):
             img = img * transform_std[:, None, None].to(device) + transform_mean[:, None, None].to(device)
             save_image(img, os.path.join(results_dir, f"epoch_{epoch+1}.png"), nrow=8)
 
-
+        '''
         # compute validation loss
         val_loss = 0
         with torch.no_grad():
@@ -308,7 +308,7 @@ for trial in range(args.n_trials):
             print(f"Stopping early at epoch {epoch + 1}")
             break
         print("--------------------")
-
+        '''
 
     end = time.time()
     flow_train_time = end - start
