@@ -118,7 +118,7 @@ with torch.no_grad():
 
 traj[..., 0] = traj[..., 0] + increments
 
-axs[0].set_title(r"\textbf{CFM with Normal base}", fontsize=16)
+axs[0].set_title(r"\textbf{Flow Matching, Normal Base}", fontsize=16)
 axs[0].contour(x_np, y_np, normal_prior, levels=5, cmap='viridis')
 axs[0].scatter(target[:, 0], target[:, 1], s=20, alpha=0.15, c='k', edgecolors='none')
 axs[0].scatter(traj[:, :n_plot, 0], traj[:, :n_plot, 1], s=0.2, alpha=0.2, c=pastelRed)
@@ -169,7 +169,7 @@ with torch.no_grad():
 
 traj[..., 0] = traj[..., 0] + increments
 
-axs[1].set_title(r"\textbf{OT-CFM with Normal base}", fontsize=16)
+axs[1].set_title(r"\textbf{OT Flow Matching, Normal Base}", fontsize=16)
 axs[1].contour(x_np, y_np, normal_prior, levels=5, cmap='viridis')
 axs[1].scatter(target[:, 0], target[:, 1], s=20, alpha=0.15, c='k', edgecolors='none')
 axs[1].scatter(traj[:, :n_plot, 0], traj[:, :n_plot, 1], s=0.2, alpha=0.2, c=pastelRed)
@@ -220,7 +220,7 @@ with torch.no_grad():
 
 traj[..., 0] = traj[..., 0] + increments
 
-axs[2].set_title(r"\textbf{OT-CFM with MPPCA base}", fontsize=16)
+axs[2].set_title(r"\textbf{OT Flow Matching, MPPCA Base}", fontsize=16)
 axs[2].contour(x_np, y_np, mppca_prior, levels=5, cmap='viridis')
 axs[2].scatter(target[:, 0], target[:, 1], s=20, alpha=0.15, c='k', edgecolors='none')
 axs[2].scatter(traj[:, :n_plot, 0], traj[:, :n_plot, 1], s=0.2, alpha=0.2, c=pastelRed)
