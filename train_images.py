@@ -47,7 +47,7 @@ parser.add_argument("--dataset", type=str, default="fashion",
                     choices=["fashion", "celeba", "fgvc-aircraft", "cifar10"])
 parser.add_argument("--epochs", type=int, default=100)
 parser.add_argument("--patience", type=int, default=100)
-parser.add_argument("--n_trials", type=int, default=1)
+parser.add_argument("--n_trials", type=int, default=3)
 args = parser.parse_args()
 
 # KEEP 20

@@ -37,9 +37,9 @@ parser.add_argument("--flow", type=str, default="CFM",
                     choices=["CFM", "OTCFM", "VPCFM"])
 parser.add_argument("--dataset", type=str, default="power",
                     choices=["POWER", "GAS", "HEPMASS", "MINIBOONE", "BSDS300"])
-parser.add_argument("--epochs", type=int, default=2)
+parser.add_argument("--epochs", type=int, default=200)
 parser.add_argument("--patience", type=int, default=10)
-parser.add_argument("--n_trials", type=int, default=2)
+parser.add_argument("--n_trials", type=int, default=5)
 args = parser.parse_args()
 
 # create results directory
@@ -186,7 +186,7 @@ for trial in range(args.n_trials):
     print("Number of model parameters: {}".format(model_params))
 
     # define training objects
-    optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate, weight_decay=1e-6)
+    optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate, weight_decay=1e-6)
     total_steps = args.epochs * len(train_loader)
     scheduler = CosineAnnealingLR(optimizer, total_steps, eta_min=1e-6)
     early_stopping = EarlyStopping(patience=args.patience, delta=1e-4, verbose=True)

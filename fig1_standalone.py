@@ -4,7 +4,6 @@
 #*******************************************************************************
 # packages
 import matplotlib.pyplot as plt
-import numpy as np
 import time
 import torch
 from torch.distributions import MultivariateNormal
@@ -19,7 +18,7 @@ plt.rcParams.update({
 
 # torchcfm imports
 from torchcfm.conditional_flow_matching import (
-    ConditionalFlowMatcher,
+    VariancePreservingConditionalFlowMatcher,
     ExactOptimalTransportConditionalFlowMatcher
 )
 from torchcfm.models.models import MLP
@@ -46,11 +45,14 @@ x_np, y_np, = xgrid.numpy(), ygrid.numpy()
 n_features = 2
 n_components = 4
 n_factors = 1
-sigma = 0.1
+sigma = 0.2
 
 # define base distributions
 normal_base = MultivariateNormal(torch.zeros(n_features), torch.eye(n_features))
 
+print("\n****************************************")
+print("Fitting MPPCA base.")
+print("****************************************\n")
 mppca_base = MPPCA(n_components=n_components, n_features=n_features, n_factors=n_factors)
 dataset = torch.tensor(generate_data("moons", batch_size=20000), dtype=torch.float32)
 fit_ll = mppca_base.fit(dataset, max_iterations=20)
@@ -63,9 +65,9 @@ batch_size = 256
 n_iters = 10000
 
 # plotting parameters
-t_steps = 500
-n_plot = 500
-n_target = 1024
+t_steps = 400
+n_plot = 100
+n_target = 2048
 shift = 0.0
 # increments to shift trajectories
 increments = torch.arange(1, t_steps + 1).view(t_steps, 1) * (shift/t_steps)
@@ -73,20 +75,22 @@ increments = torch.arange(1, t_steps + 1).view(t_steps, 1) * (shift/t_steps)
 target = torch.tensor(generate_data("moons", batch_size=n_target), dtype=torch.float32)
 target[:,0] = target[:,0] + shift
 
-
 # create the figure
 #fig, axs = plt.subplots(1,2, figsize=(6,8), constrained_layout=True)
-fig, axs = plt.subplots(1,2, figsize=(8,16), constrained_layout=True)
-'''
+fig, axs = plt.subplots(1,3, figsize=(14,5), constrained_layout=True)
+
 #*******************************************************************************
-# CFM (Normal base)
+# VPCFM (Normal base)
 #*******************************************************************************
 torch.manual_seed(42)
 
 model = MLP(dim=n_features, time_varying=True)
-optimizer = torch.optim.Adam(model.parameters())
-FM = ConditionalFlowMatcher(sigma=sigma)
+optimizer = torch.optim.SGD(model.parameters())
+FM = VariancePreservingConditionalFlowMatcher(sigma=sigma)
 
+print("\n****************************************")
+print("Training VP-CFM, normal base.")
+print("****************************************\n")
 start = time.time()
 for k in range(n_iters):
     optimizer.zero_grad()
@@ -114,18 +118,16 @@ with torch.no_grad():
 
 traj[..., 0] = traj[..., 0] + increments
 
-axs[0].set_title(r"\textbf{CFM with Normal base}")
-axs[0].contour(x_np, y_np, normal_prior, levels=5, cmap='inferno')
-axs[0].scatter(target[:, 0], target[:, 1], s=15, alpha=0.6, c='k', edgecolors='none')
+axs[0].set_title(r"\textbf{CFM with Normal base}", fontsize=16)
+axs[0].contour(x_np, y_np, normal_prior, levels=5, cmap='viridis')
+axs[0].scatter(target[:, 0], target[:, 1], s=20, alpha=0.15, c='k', edgecolors='none')
 axs[0].scatter(traj[:, :n_plot, 0], traj[:, :n_plot, 1], s=0.2, alpha=0.2, c=pastelRed)
 axs[0].scatter(traj[-1, :n_plot, 0], traj[-1, :n_plot, 1], s=10, alpha=1, c=pastelRed)
 axs[0].scatter(traj[0, :n_plot, 0], traj[0, :n_plot, 1], s=10, alpha=1, c='k')
-axs[0].set_xlim([-4, 4])
-axs[0].set_ylim([-2.5, 2.5])
+axs[0].set_xlim([-3.85, 3.85])
+axs[0].set_ylim([-2.5, 3])
 axs[0].set_aspect('equal')
 axs[0].set_axis_off()
-#plt.savefig("cfm-normal.png", dpi=600)
-'''
 
 #*******************************************************************************
 # OTCFM (Normal base)
@@ -133,9 +135,12 @@ axs[0].set_axis_off()
 torch.manual_seed(42)
 
 model = MLP(dim=n_features, time_varying=True)
-optimizer = torch.optim.Adam(model.parameters())
-FM = ConditionalFlowMatcher(sigma=sigma)
+optimizer = torch.optim.SGD(model.parameters())
+FM = ExactOptimalTransportConditionalFlowMatcher(sigma=sigma)
 
+print("\n****************************************")
+print("Training OT-CFM, normal base.")
+print("****************************************\n")
 start = time.time()
 for k in range(n_iters):
     optimizer.zero_grad()
@@ -164,18 +169,16 @@ with torch.no_grad():
 
 traj[..., 0] = traj[..., 0] + increments
 
-axs[0].set_title(r"\textbf{OT-CFM with Normal base}")
-axs[0].contour(x_np, y_np, normal_prior, levels=5, cmap='inferno')
-axs[0].scatter(target[:, 0], target[:, 1], s=15, alpha=0.6, c='k', edgecolors='none')
-axs[0].scatter(traj[:, :n_plot, 0], traj[:, :n_plot, 1], s=0.2, alpha=0.2, c=pastelRed)
-axs[0].scatter(traj[-1, :n_plot, 0], traj[-1, :n_plot, 1], s=10, alpha=1, c=pastelRed)
-axs[0].scatter(traj[0, :n_plot, 0], traj[0, :n_plot, 1], s=10, alpha=1, c='k')
-axs[0].set_xlim([-4, 4])
-axs[0].set_ylim([-2.5, 2.5])
-axs[0].set_aspect('equal')
-axs[0].set_axis_off()
-#plt.savefig("otcfm-normal.png", dpi=600)
-
+axs[1].set_title(r"\textbf{OT-CFM with Normal base}", fontsize=16)
+axs[1].contour(x_np, y_np, normal_prior, levels=5, cmap='viridis')
+axs[1].scatter(target[:, 0], target[:, 1], s=20, alpha=0.15, c='k', edgecolors='none')
+axs[1].scatter(traj[:, :n_plot, 0], traj[:, :n_plot, 1], s=0.2, alpha=0.2, c=pastelRed)
+axs[1].scatter(traj[-1, :n_plot, 0], traj[-1, :n_plot, 1], s=10, alpha=1, c=pastelRed)
+axs[1].scatter(traj[0, :n_plot, 0], traj[0, :n_plot, 1], s=10, alpha=1, c='k')
+axs[1].set_xlim([-3.85, 3.85])
+axs[1].set_ylim([-2.5, 3])
+axs[1].set_aspect('equal')
+axs[1].set_axis_off()
 
 #*******************************************************************************
 # OTCFM (MPPCA base)
@@ -183,9 +186,12 @@ axs[0].set_axis_off()
 torch.manual_seed(42)
 
 model = MLP(dim=n_features, time_varying=True)
-optimizer = torch.optim.Adam(model.parameters())
-FM = ConditionalFlowMatcher(sigma=sigma)
+optimizer = torch.optim.SGD(model.parameters())
+FM = ExactOptimalTransportConditionalFlowMatcher(sigma=sigma)
 
+print("\n****************************************")
+print("Training OT-CFM, MPPCA base.")
+print("****************************************\n")
 start = time.time()
 for k in range(n_iters):
     optimizer.zero_grad()
@@ -214,16 +220,16 @@ with torch.no_grad():
 
 traj[..., 0] = traj[..., 0] + increments
 
-axs[1].set_title(r"\textbf{OT-CFM with MPPCA base}")
-axs[1].contour(x_np, y_np, mppca_prior, levels=5, cmap='inferno')
-axs[1].scatter(target[:, 0], target[:, 1], s=15, alpha=0.6, c='k', edgecolors='none')
-axs[1].scatter(traj[:, :n_plot, 0], traj[:, :n_plot, 1], s=0.2, alpha=0.2, c=pastelRed)
-axs[1].scatter(traj[-1, :n_plot, 0], traj[-1, :n_plot, 1], s=10, alpha=1, c=pastelRed)
-axs[1].scatter(traj[0, :n_plot, 0], traj[0, :n_plot, 1], s=10, alpha=1, c='k')
-axs[1].set_xlim([-4, 4])
-axs[1].set_ylim([-2.5, 2.5])
-axs[1].set_aspect('equal')
-axs[1].set_axis_off()
+axs[2].set_title(r"\textbf{OT-CFM with MPPCA base}", fontsize=16)
+axs[2].contour(x_np, y_np, mppca_prior, levels=5, cmap='viridis')
+axs[2].scatter(target[:, 0], target[:, 1], s=20, alpha=0.15, c='k', edgecolors='none')
+axs[2].scatter(traj[:, :n_plot, 0], traj[:, :n_plot, 1], s=0.2, alpha=0.2, c=pastelRed)
+axs[2].scatter(traj[-1, :n_plot, 0], traj[-1, :n_plot, 1], s=10, alpha=1, c=pastelRed)
+axs[2].scatter(traj[0, :n_plot, 0], traj[0, :n_plot, 1], s=10, alpha=1, c='k')
+axs[2].set_xlim([-3.85, 3.85])
+axs[2].set_ylim([-2.5, 3])
+axs[2].set_aspect('equal')
+axs[2].set_axis_off()
 
+# save figure
 plt.savefig("fig1.png", dpi=600, bbox_inches='tight')
-# %%
