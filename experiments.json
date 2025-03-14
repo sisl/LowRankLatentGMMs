@@ -1,28 +1,4 @@
 {
-    "POWER": {
-        "n_features":       6,
-        "n_components":     5,
-        "n_factors":        3,
-        "em_iters":         10,
-        "batch_size":       256,
-        "learning_rate":    5e-4,
-        "train_split":      0.8,
-        "val_split":        0.1,
-        "test_split":       0.1,
-        "hidden_units":     32
-    },
-    "GAS": {
-        "n_features":       8,
-        "n_components":     10,
-        "n_factors":        3,
-        "em_iters":         10,
-        "batch_size":       256,
-        "learning_rate":    5e-4,
-        "train_split":      0.8,
-        "val_split":        0.1,
-        "test_split":       0.1,
-        "hidden_units":     32
-    },
     "HEPMASS": {
         "n_features":       21,
         "n_components":     10,
@@ -78,18 +54,6 @@
         "em_iters":         10,
         "batch_size":       128,
         "em_batch_size":    1000,
-        "learning_rate":    2e-4,
-        "num_channels":     64,
-        "num_res_blocks":   2,
-        "channel_mult":     [1, 2, 2, 2]
-    },
-    "fgvc-aircraft": {
-        "image_shape":      [32, 32, 3],
-        "n_components":     50,
-        "n_factors":        10,
-        "em_iters":         10,
-        "batch_size":       64,
-        "em_batch_size":    200,
         "learning_rate":    2e-4,
         "num_channels":     64,
         "num_res_blocks":   2,

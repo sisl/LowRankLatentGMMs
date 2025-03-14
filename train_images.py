@@ -21,7 +21,6 @@ from torchdyn.core import NeuralODE
 from torchvision.utils import save_image
 from tqdm import tqdm
 
-
 # torchcfm imports
 from torchcfm.conditional_flow_matching import (
     ConditionalFlowMatcher,
@@ -32,7 +31,6 @@ from torchcfm.models.unet.unet import UNetModelWrapper
 
 # file imports
 from models.mppca import MPPCA
-from utils.early_stopping import EarlyStopping
 from utils.utils import load_config
 from utils.ndb import NDB
 
@@ -44,14 +42,13 @@ parser.add_argument("--base", type=str, default="Normal",
 parser.add_argument("--flow", type=str, default="CFM",
                     choices=["CFM", "OTCFM", "VPCFM"])
 parser.add_argument("--dataset", type=str, default="fashion",
-                    choices=["fashion", "celeba", "fgvc-aircraft", "cifar10"])
+                    choices=["fashion", "celeba", "cifar10"])
 parser.add_argument("--epochs", type=int, default=100)
 parser.add_argument("--patience", type=int, default=100)
 parser.add_argument("--n_trials", type=int, default=3)
 args = parser.parse_args()
 
-# KEEP 20
-# 
+
 warmup = 5000
 def warmup_lr(step):
     return min(step, warmup) / warmup
@@ -84,14 +81,9 @@ n_features = np.prod(image_shape)
 # read in data
 #*******************************************************************************
 data_handler = ImageDataset(dataset=args.dataset, root_dir="./data", image_shape=image_shape)
-
 mppca_dataset = data_handler.get_mppca_dataset()
-
 train_loader, val_loader, test_loader = data_handler.get_dataloaders(batch_size)
-
-
 transform_mean, transform_std = data_handler.transform_mean, data_handler.transform_std
-
 
 #*******************************************************************************
 # utility functions
@@ -196,7 +188,6 @@ for trial in range(args.n_trials):
         raise ValueError
 
     # define the Neural ODE network
-
     model = UNetModelWrapper(
         dim=(image_shape[-1], image_shape[0], image_shape[1]),
         num_res_blocks=num_res_blocks,
@@ -220,8 +211,6 @@ for trial in range(args.n_trials):
     optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate)
     total_steps = args.epochs * len(train_loader)
     scheduler = LambdaLR(optimizer, lr_lambda=warmup_lr)
-    early_stopping = EarlyStopping(patience=args.patience, delta=1e-4, verbose=True)
-
 
     #*******************************************************************************
     # construct base distribution
@@ -290,25 +279,6 @@ for trial in range(args.n_trials):
             img = traj[-1, :].view([-1, image_shape[-1], image_shape[0], image_shape[1]]).clip(-1,1)
             img = img * transform_std[:, None, None].to(device) + transform_mean[:, None, None].to(device)
             save_image(img, os.path.join(results_dir, f"epoch_{epoch+1}.png"), nrow=8)
-
-        '''
-        # compute validation loss
-        val_loss = 0
-        with torch.no_grad():
-            for batch in tqdm(val_loader, desc="Computing validation loss"):
-                x0 = sample_base(base=base_distribution, N=batch_size, image_shape=image_shape, with_noise=True).to(device)
-                x1 = batch[0].to(device)
-                val_loss += compute_loss(x0, x1, flow_matcher, model).item()
-                
-        val_loss /= len(val_loader)
-        print("--------------------")
-        print(f"Epoch {epoch + 1}/{args.epochs}, Val Loss: {val_loss:.4f}")
-        early_stopping(val_loss)
-        if early_stopping.early_stop:
-            print(f"Stopping early at epoch {epoch + 1}")
-            break
-        print("--------------------")
-        '''
 
     end = time.time()
     flow_train_time = end - start

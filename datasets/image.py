@@ -1,10 +1,7 @@
 import numpy as np
 import torch
-from torch.utils.data import Dataset, DataLoader, random_split
-import random
-from torchvision.datasets import ImageFolder
-
-from torchvision.datasets import CelebA, FGVCAircraft, FashionMNIST, CIFAR10
+from torch.utils.data import DataLoader, random_split
+from torchvision.datasets import CelebA, FashionMNIST, CIFAR10
 import torchvision.transforms as transforms
 
 from utils.utils import CropTransform, ReshapeTransform
@@ -33,16 +30,6 @@ class ImageDataset:
             mppca_transforms = transforms.Compose([
                 CropTransform((25, 50, 25+128, 50+128)), 
                 transforms.Resize(self.image_shape[0]),
-                transforms.ToTensor(),
-                transforms.Normalize(mean, std),
-                ReshapeTransform([-1])
-            ])
-        elif self.dataset == "fgvc-aircraft":
-            mean = torch.tensor([0.485, 0.456, 0.406])
-            std = torch.tensor([0.229, 0.224, 0.225])
-            mppca_transforms = transforms.Compose([
-                transforms.Resize((32, 32)),
-                #transforms.Resize(self.image_shape[0]),
                 transforms.ToTensor(),
                 transforms.Normalize(mean, std),
                 ReshapeTransform([-1])
@@ -80,13 +67,6 @@ class ImageDataset:
                 transform=self.mppca_transforms,
                 download=True
             )
-        elif self.dataset == "fgvc-aircraft":
-            dataset = FGVCAircraft(
-                root=self.root_dir,
-                split="trainval",
-                transform=self.mppca_transforms,
-                download=True
-            )
         elif self.dataset == "cifar10":
             dataset = CIFAR10(
                 root=self.root_dir,
@@ -116,18 +96,6 @@ class ImageDataset:
                 transform=cfm_transforms, download=True)  
             test_dataset = CelebA(root=self.root_dir, split="test",
                 transform=cfm_transforms, download=True)  
-            
-        elif self.dataset == "fgvc-aircraft":
-            train_dataset = FGVCAircraft(root=self.root_dir, split="trainval",
-                transform=cfm_transforms, download=True)
-            
-            temp_dataset = FGVCAircraft(root=self.root_dir, split="test",
-                transform=cfm_transforms, download=True)
-
-            val_size = int(0.5 * len(temp_dataset))  # 50% for validation
-            test_size = len(temp_dataset) - val_size  # 50% for testing
-
-            val_dataset, test_dataset = random_split(temp_dataset, [val_size, test_size], torch.Generator().manual_seed(42))
         elif self.dataset == "cifar10":
             temp_dataset = CIFAR10(root=self.root_dir, train=True,
                 transform=cfm_transforms, download=True

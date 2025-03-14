@@ -54,7 +54,7 @@ print("\n****************************************")
 print("Fitting MPPCA base.")
 print("****************************************\n")
 mppca_base = MPPCA(n_components=n_components, n_features=n_features, n_factors=n_factors)
-dataset = torch.tensor(generate_data("moons", batch_size=20000), dtype=torch.float32)
+dataset = torch.tensor(generate_data("moons", batch_size=50000), dtype=torch.float32)
 fit_ll = mppca_base.fit(dataset, max_iterations=20)
 
 normal_prior = normal_base.log_prob(xyinput).exp().reshape(n_steps,n_steps).numpy()
@@ -62,7 +62,7 @@ mppca_prior = mppca_base.log_prob(xyinput).exp().reshape(n_steps,n_steps).numpy(
 
 # training parameters
 batch_size = 256
-n_iters = 10000
+n_iters = 20000
 
 # plotting parameters
 t_steps = 400
@@ -85,7 +85,7 @@ fig, axs = plt.subplots(1,3, figsize=(14,5), constrained_layout=True)
 torch.manual_seed(42)
 
 model = MLP(dim=n_features, time_varying=True)
-optimizer = torch.optim.SGD(model.parameters())
+optimizer = torch.optim.Adam(model.parameters())
 FM = VariancePreservingConditionalFlowMatcher(sigma=sigma)
 
 print("\n****************************************")
@@ -135,7 +135,7 @@ axs[0].set_axis_off()
 torch.manual_seed(42)
 
 model = MLP(dim=n_features, time_varying=True)
-optimizer = torch.optim.SGD(model.parameters())
+optimizer = torch.optim.Adam(model.parameters())
 FM = ExactOptimalTransportConditionalFlowMatcher(sigma=sigma)
 
 print("\n****************************************")
@@ -186,7 +186,7 @@ axs[1].set_axis_off()
 torch.manual_seed(42)
 
 model = MLP(dim=n_features, time_varying=True)
-optimizer = torch.optim.SGD(model.parameters())
+optimizer = torch.optim.Adam(model.parameters())
 FM = ExactOptimalTransportConditionalFlowMatcher(sigma=sigma)
 
 print("\n****************************************")

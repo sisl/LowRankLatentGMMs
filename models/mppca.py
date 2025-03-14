@@ -302,7 +302,6 @@ class MPPCA(torch.nn.Module):
             pi = r_sum / torch.sum(r_sum)
             normalized_pi = clip_pi(pi)
 
-            #self.pi_logits.data = torch.log(r_sum / torch.sum(r_sum))
             self.pi_logits.data = torch.log(normalized_pi)
             ll = torch.mean(self.log_prob(x)).item()
             print('Iteration {}/{}, train log-likelihood = {:.4f}, took {:.4f} sec'.format(
