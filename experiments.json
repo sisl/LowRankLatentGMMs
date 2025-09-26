@@ -6,9 +6,6 @@
         "em_iters":         10,
         "batch_size":       256,
         "learning_rate":    5e-4,
-        "train_split":      0.8,
-        "val_split":        0.1,
-        "test_split":       0.1,
         "hidden_units":     128
     },
     "MINIBOONE": {
@@ -18,9 +15,6 @@
         "em_iters":         50,
         "batch_size":       64,
         "learning_rate":    5e-4,
-        "train_split":      0.8,
-        "val_split":        0.1,
-        "test_split":       0.1,
         "hidden_units":     128
     },
     "BSDS300": {
@@ -30,9 +24,6 @@
         "em_iters":         10,
         "batch_size":       256,
         "learning_rate":    5e-4,
-        "train_split":      0.8,
-        "val_split":        0.1,
-        "test_split":       0.1,
         "hidden_units":     128
     },
     "celeba": {

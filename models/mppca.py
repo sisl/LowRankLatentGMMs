@@ -316,7 +316,7 @@ class MPPCA(torch.nn.Module):
         Estimate maximum-likelihood MPPCA paramters for the complete dataset 
         using the Expectation Maximization algorithm from Tipping and Bishop 
         (1999) [1]. This is a memory-efficient batched implementation for large 
-        datasets that do not fit in memory:
+        datasets that do not fit in memory [2]:
         1) E step:
             For all mini-batches:
             - Calculate and store responsibilities

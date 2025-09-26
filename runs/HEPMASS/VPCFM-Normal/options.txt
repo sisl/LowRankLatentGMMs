@@ -1,0 +1,16 @@
+{
+  "base": "Normal",
+  "flow": "VPCFM",
+  "dataset": "HEPMASS",
+  "n_factors": 4,
+  "epochs": 1,
+  "patience": 10,
+  "n_trials": 2,
+  "n_features": 21,
+  "n_components": 10,
+  "em_iters": 10,
+  "batch_size": 256,
+  "learning_rate": 0.0005,
+  "hidden_units": 128,
+  "run_dir": "./runs/HEPMASS/VPCFM-Normal"
+}

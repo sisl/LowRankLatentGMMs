@@ -31,7 +31,7 @@ from torchcfm.models.unet.unet import UNetModelWrapper
 
 # file imports
 from models.mppca import MPPCA
-from utils.utils import load_config
+from utils.utils import load_config, set_seed
 from utils.ndb import NDB
 
 from datasets.image import ImageDataset
@@ -45,7 +45,7 @@ parser.add_argument("--dataset", type=str, default="fashion",
                     choices=["fashion", "celeba", "cifar10"])
 parser.add_argument("--epochs", type=int, default=100)
 parser.add_argument("--patience", type=int, default=100)
-parser.add_argument("--n_trials", type=int, default=3)
+parser.add_argument("--n_trials", type=int, default=2)
 args = parser.parse_args()
 
 
@@ -173,7 +173,7 @@ print(f"Dataset: {args.dataset} with {n_features} dimensions.")
 print("****************************************\n")
 
 for trial in range(args.n_trials):
-    torch.manual_seed(trial)
+    set_seed(trial)
     #*******************************************************************************
     # set up models and optimizers
     #*******************************************************************************

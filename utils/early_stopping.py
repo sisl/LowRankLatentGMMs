@@ -1,5 +1,5 @@
 class EarlyStopping:
-    def __init__(self, patience=5, delta=0, verbose=False):
+    def __init__(self, patience=5, delta=0):
         """
         Args:
             patience (int): Number of epochs to wait after the last improvement.
@@ -8,24 +8,21 @@ class EarlyStopping:
         """
         self.patience = patience
         self.delta = delta
-        self.verbose = verbose
-        self.best_loss = float("inf")
-        self.epochs_without_improvement = 0
-        self.early_stop = False
+        self.best_loss = float('inf')
+        self.counter = 0
+        self.should_stop = False
 
-    def __call__(self, val_loss):
+    def step(self, val_loss):
         if val_loss < self.best_loss - self.delta:
             self.best_loss = val_loss
-            self.epochs_without_improvement = 0
-            if self.verbose:
-                print(f"Validation loss improved to {val_loss:.4f}.")
+            self.counter = 0
+            print(f"Validation loss improved to {val_loss:.4f}.")
+            return True
         else:
-            self.epochs_without_improvement += 1
-            if self.verbose:
-                print(f"No improvement in validation loss for {self.epochs_without_improvement} epoch(s).")
+            self.counter += 1
+            print(f"No improvement in validation loss for {self.counter} epoch(s).")
 
-            if self.epochs_without_improvement >= self.patience:
-                self.early_stop = True
-                if self.verbose:
-                    print("Early stopping triggered.")
-
+            if self.counter >= self.patience:
+                self.should_stop = True
+                print("Early stopping triggered.")
+            return False

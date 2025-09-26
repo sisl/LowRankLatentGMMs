@@ -1,10 +1,10 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import json
+import os
+import random
 import sklearn.datasets as datasets
 import torch
-
-from models.mppca import MPPCA
 
 # color-blind friendly palette
 pastelBlue = "#0072B2"
@@ -25,6 +25,20 @@ class CropTransform:
 
     def __call__(self, img):
         return img.crop(self.bbox)
+
+
+def set_seed(seed):
+    """ Seed the training run for reproducibility.
+    
+    Args:
+    seed (int): The fixed seed for all training processes. 
+    """
+    # https://github.com/pytorch/pytorch/issues/7068
+    random.seed(seed)
+    os.environ['PYTHONHASHSEED'] = str(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
 
 
 def generate_data(target, rng=None, batch_size=256):
