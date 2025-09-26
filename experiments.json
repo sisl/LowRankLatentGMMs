@@ -27,7 +27,7 @@
         "hidden_units":     128
     },
     "celeba": {
-        "image_shape":      [32, 32, 3],
+        "image_shape":      [64, 64, 3],
         "n_components":     50,
         "n_factors":        10,
         "em_iters":         10,
@@ -36,7 +36,7 @@
         "learning_rate":    2e-4,
         "num_channels":     64,
         "num_res_blocks":   2,
-        "channel_mult":     [1, 2, 2, 2]
+        "channel_mult":     [1, 2, 3, 4]
     },
     "cifar10": {
         "image_shape":      [32, 32, 3],

@@ -1,5 +1,5 @@
 __pycache__/
 data/
 figures/
-results/
+runs/
 **.png

@@ -1,7 +1,7 @@
-#python3 train_uci.py --base "MPPCA"  --flow "OTCFM" --dataset "HEPMASS" --epochs 1
-#python3 train_uci.py --base "Normal"  --flow "OTCFM" --dataset "HEPMASS" --epochs 1
-python3 train_uci.py --base "MPPCA"  --flow "VPCFM" --dataset "HEPMASS" --epochs 1
-python3 train_uci.py --base "Normal"  --flow "VPCFM" --dataset "HEPMASS" --epochs 1
+python3 train_uci.py --base "MPPCA"  --flow "OTCFM" --dataset "HEPMASS" --epochs 200
+python3 train_uci.py --base "Normal"  --flow "OTCFM" --dataset "HEPMASS" --epochs 200
+python3 train_uci.py --base "MPPCA"  --flow "VPCFM" --dataset "HEPMASS" --epochs 200
+python3 train_uci.py --base "Normal"  --flow "VPCFM" --dataset "HEPMASS" --epochs 200
 
 #python3 train_uci.py --base "MPPCA"  --flow "OTCFM" --dataset "MINIBOONE" --epochs 1
 #python3 train_uci.py --base "Normal"  --flow "OTCFM" --dataset "MINIBOONE" --epochs 1

@@ -17,7 +17,6 @@ from tqdm import tqdm
 
 # torchcfm imports
 from torchcfm.conditional_flow_matching import (
-    ConditionalFlowMatcher,
     ExactOptimalTransportConditionalFlowMatcher,
     VariancePreservingConditionalFlowMatcher
 )
@@ -29,8 +28,8 @@ warnings.filterwarnings("ignore", category=UserWarning, module='torch')
 # file imports
 from models.mppca import MPPCA
 from models.cnf import cnf_test_metrics, torch_wrapper
-from utils.early_stopping import EarlyStopping
 from utils.ckpt_utils import load_best_checkpoint, save_checkpoint
+from utils.early_stopping import EarlyStopping
 from utils.utils import plot_data, load_config, set_seed
 from datasets.uci import UCIDataset
 
@@ -44,7 +43,7 @@ def create_training_options():
     parser.add_argument("--n_factors", type=int, default=None)
     parser.add_argument("--epochs", type=int, default=200)
     parser.add_argument("--patience", type=int, default=10)
-    parser.add_argument("--n_trials", type=int, default=2)
+    parser.add_argument("--n_trials", type=int, default=3)
     opt = parser.parse_args()
 
     # read in experiment hyperparameters
@@ -118,25 +117,13 @@ def compute_loss(x0, x1, flow_matcher, model):
 def save_metrics(dir, log_probs, NFEs, total_epochs, base_fit_times, flow_train_times):
     metrics = {}
     metrics['log probs'] = np.array(log_probs).tolist()
-    metrics['log probs mean'] = float(log_probs.mean())
-    metrics['log probs std'] = float(log_probs.std())
     metrics['NFEs'] = np.array(NFEs).tolist()
-    metrics['NFEs mean'] = float(NFEs.mean())
-    metrics['NFEs std'] = float(NFEs.std())
     metrics['epochs'] = np.array(total_epochs).tolist()
-    metrics['epochs mean'] = float(total_epochs.mean())
-    metrics['epochs std'] = float(total_epochs.std())
     metrics['base fit times'] = np.array(base_fit_times).tolist()
-    metrics['base fit times mean'] = float(base_fit_times.mean())
-    metrics['base fit times std'] = float(base_fit_times.std())
     metrics['flow train times'] = np.array(flow_train_times).tolist()
-    metrics['flow train times mean'] = float(flow_train_times.mean())
-    metrics['flow train times std'] = float(flow_train_times.std())
 
     total_train_times = np.add(np.array(base_fit_times), np.array(flow_train_times))
     metrics['total train times'] = total_train_times.tolist()
-    metrics['total train times mean'] = float(total_train_times.mean())
-    metrics['total train times std'] = float(total_train_times.std())
 
     # save results
     with open(os.path.join(dir, "results.json"), "w") as outfile:
@@ -204,6 +191,7 @@ def main(opt):
 
         # define training objects
         optimizer = torch.optim.SGD(model.parameters(), lr=opt.learning_rate, weight_decay=1e-6)
+        optimizer = torch.optim.Adam(model.parameters(), lr=opt.learning_rate)
         total_steps = opt.epochs * len(train_loader)
         scheduler = CosineAnnealingLR(optimizer, total_steps, eta_min=1e-6)
         early_stopper = EarlyStopping(patience=opt.patience, delta=1e-4)
