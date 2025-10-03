@@ -190,7 +190,7 @@ def main(opt):
         print("Number of model parameters: {}".format(model_params))
 
         # define training objects
-        optimizer = torch.optim.SGD(model.parameters(), lr=opt.learning_rate, weight_decay=1e-6)
+        #optimizer = torch.optim.SGD(model.parameters(), lr=opt.learning_rate, weight_decay=1e-6)
         optimizer = torch.optim.Adam(model.parameters(), lr=opt.learning_rate)
         total_steps = opt.epochs * len(train_loader)
         scheduler = CosineAnnealingLR(optimizer, total_steps, eta_min=1e-6)
