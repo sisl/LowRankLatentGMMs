@@ -38,20 +38,34 @@ from utils.ndb import NDB
 
 from datasets.image import ImageDataset
 
+#*******************************************************************************
+# training configuration logistics
+#*******************************************************************************
 
-def create_training_options():
-    """ Parse arguments, load training configurations, and save data."""
+def build_argparse():
+    """Create the shared argument parser for training options."""
     parser = argparse.ArgumentParser()
+    parser.add_argument("--dataset", type=str, default="fashion", choices=["fashion", "cifar10", "celeba"])
     parser.add_argument("--base", type=str, default="Normal", choices=["Normal", "MPPCA"])
     parser.add_argument("--flow", type=str, default="CFM", choices=["OTCFM", "VPCFM"])
-    parser.add_argument("--dataset", type=str, default="fashion", choices=["fashion", "cifar10", "celeba"])
     parser.add_argument("--n_factors", type=int, default=None)
     parser.add_argument("--epochs", type=int, default=100)
     parser.add_argument("--patience", type=int, default=100)
     parser.add_argument("--n_trials", type=int, default=3)
-    opt = parser.parse_args()
+    return parser
 
-    # read in experiment hyperparameters
+
+def generate_training_configuration(opt):
+    """
+    Finalize training options by loading config, creating directories, and saving options.
+
+    Args:
+        opt (argparse.Namespace): Parsed options object
+
+    Returns:
+        argparse.Namespace: Finalized options object
+    """
+    # Load experiment hyperparameters from config
     config = load_config("experiments.json", opt.dataset)
 
     if opt.n_factors is None:
@@ -67,7 +81,7 @@ def create_training_options():
     opt.num_res_blocks = config["num_res_blocks"]
     opt.channel_mult = config["channel_mult"]
 
-    # create run directory
+    # Create run directory
     opt.run_dir = f"./runs/{opt.dataset}/{opt.flow}-{opt.base}-{opt.n_factors}-factors"
     os.makedirs(opt.run_dir, exist_ok=True)
 
@@ -78,6 +92,65 @@ def create_training_options():
 
     return opt
 
+
+def create_training_options():
+    """Parse arguments from command line, load training configurations, and save data."""
+
+    parser = build_argparse()
+    opt = parser.parse_args()
+    return generate_training_configuration(opt)
+
+def create_training_options_from_kwargs(dataset, **kwargs):
+    """
+    Configure a training run from keyword arguments instead of command line.
+
+    Arguments
+    ---------
+        dataset : str
+            Dataset name (fashion, cifar10, or celeba)
+        kwargs : dict
+            Additional training options (base, flow, n_factors, epochs, etc.)
+
+    Returns
+    -------
+        argparse.Namespace
+            Configuration object, or None if parsing fails
+
+    Example
+    -------
+    >>> opt = create_training_options_from_kwargs(
+    >>>     "fashion",
+    >>>     base="MPPCA",
+    >>>     flow="OTCFM",
+    >>>     n_factors=8,
+    >>>     epochs=50
+    >>> )
+    """
+    parser = build_argparse()
+
+    # Convert kwargs to argparse format
+    args_list = ["--dataset", str(dataset)]
+    for key, value in kwargs.items():
+        if isinstance(value, bool):
+            # Boolean flags (just add the flag if True)
+            if value:
+                args_list.append(f"--{key}")
+        elif isinstance(value, list):
+            # List arguments
+            args_list.append(f"--{key}")
+            args_list.extend([str(v) for v in value])
+        else:
+            # Regular arguments
+            args_list.extend([f"--{key}", str(value)])
+
+    # Parse arguments
+    try:
+        opt = parser.parse_args(args_list)
+    except SystemExit as e:
+        print(f"Error: Unrecognized arguments in create_training_options_from_kwargs: {kwargs}")
+        return None
+
+    return generate_training_configuration(opt)
 
 #*******************************************************************************
 # utility functions
