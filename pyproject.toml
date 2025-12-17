@@ -3,7 +3,7 @@ name = "lowranklatentgmms"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
-requires-python = "==3.11.14"
+requires-python = ">=3.11"
 dependencies = [
     "gdown>=5.2.0",
     "matplotlib>=3.10.8",
