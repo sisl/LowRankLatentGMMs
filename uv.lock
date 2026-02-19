@@ -1139,6 +1139,7 @@ dependencies = [
     { name = "matplotlib" },
     { name = "numpy" },
     { name = "pandas" },
+    { name = "pytorch-fid" },
     { name = "scikit-learn" },
     { name = "tabulate" },
     { name = "torch", version = "2.9.1", source = { registry = "https://pypi.org/simple" }, marker = "sys_platform != 'linux' and sys_platform != 'win32'" },
@@ -1155,6 +1156,7 @@ requires-dist = [
     { name = "matplotlib", specifier = ">=3.10.8" },
     { name = "numpy", specifier = "<2.0.0" },
     { name = "pandas", specifier = "<2.0" },
+    { name = "pytorch-fid", specifier = ">=0.3.0" },
     { name = "scikit-learn", specifier = ">=1.8.0" },
     { name = "tabulate", specifier = ">=0.9.0" },
     { name = "torch", marker = "sys_platform != 'linux' and sys_platform != 'win32'", specifier = ">=2.9.1" },
@@ -2124,6 +2126,25 @@ wheels = [
 ]
 
 [[package]]
+name = "pytorch-fid"
+version = "0.3.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "numpy" },
+    { name = "pillow" },
+    { name = "scipy" },
+    { name = "torch", version = "2.9.1", source = { registry = "https://pypi.org/simple" }, marker = "sys_platform != 'linux' and sys_platform != 'win32'" },
+    { name = "torch", version = "2.9.1+cu130", source = { registry = "https://download.pytorch.org/whl/cu130" }, marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
+    { name = "torchvision", version = "0.24.1", source = { registry = "https://download.pytorch.org/whl/cu130" }, marker = "python_full_version < '3.15' and platform_machine == 'aarch64' and platform_python_implementation == 'CPython' and sys_platform == 'linux'" },
+    { name = "torchvision", version = "0.24.1", source = { registry = "https://pypi.org/simple" }, marker = "sys_platform != 'linux' and sys_platform != 'win32'" },
+    { name = "torchvision", version = "0.24.1+cu130", source = { registry = "https://download.pytorch.org/whl/cu130" }, marker = "(python_full_version >= '3.15' and sys_platform == 'linux') or (platform_machine != 'aarch64' and sys_platform == 'linux') or (platform_python_implementation != 'CPython' and sys_platform == 'linux') or sys_platform == 'win32'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/72/0b/09c4ac404e57b91688c97120b4194205c9813b0b9c263469cf28e3d74569/pytorch-fid-0.3.0.tar.gz", hash = "sha256:1c80d112c9cf5ebcbcc428a0b7ea615c302805ad6780ec29e8e2955ba31571c8", size = 16071, upload-time = "2023-01-05T17:29:15.594Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/dd/2b/e8c875b9380f34c70d4b5d98deaaa8bcac4922388efad08a72cf129118ee/pytorch_fid-0.3.0-py3-none-any.whl", hash = "sha256:0e1d4fe66441a8dff2a2aca31394e9389fb197dfeff046f2f971f271d4137767", size = 15488, upload-time = "2023-01-05T17:29:13.649Z" },
+]
+
+[[package]]
 name = "pytorch-lightning"
 version = "1.9.5"
 source = { registry = "https://pypi.org/simple" }
@@ -2690,24 +2711,24 @@ dependencies = [
     { name = "typing-extensions", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
 ]
 wheels = [
-    { url = "https://download.pytorch.org/whl/cu130/torch-2.9.1%2Bcu130-cp311-cp311-manylinux_2_28_aarch64.whl" },
-    { url = "https://download.pytorch.org/whl/cu130/torch-2.9.1%2Bcu130-cp311-cp311-manylinux_2_28_x86_64.whl" },
-    { url = "https://download.pytorch.org/whl/cu130/torch-2.9.1%2Bcu130-cp311-cp311-win_amd64.whl" },
-    { url = "https://download.pytorch.org/whl/cu130/torch-2.9.1%2Bcu130-cp312-cp312-manylinux_2_28_aarch64.whl" },
-    { url = "https://download.pytorch.org/whl/cu130/torch-2.9.1%2Bcu130-cp312-cp312-manylinux_2_28_x86_64.whl" },
-    { url = "https://download.pytorch.org/whl/cu130/torch-2.9.1%2Bcu130-cp312-cp312-win_amd64.whl" },
-    { url = "https://download.pytorch.org/whl/cu130/torch-2.9.1%2Bcu130-cp313-cp313-manylinux_2_28_aarch64.whl" },
-    { url = "https://download.pytorch.org/whl/cu130/torch-2.9.1%2Bcu130-cp313-cp313-manylinux_2_28_x86_64.whl" },
-    { url = "https://download.pytorch.org/whl/cu130/torch-2.9.1%2Bcu130-cp313-cp313-win_amd64.whl" },
-    { url = "https://download.pytorch.org/whl/cu130/torch-2.9.1%2Bcu130-cp313-cp313t-manylinux_2_28_aarch64.whl" },
-    { url = "https://download.pytorch.org/whl/cu130/torch-2.9.1%2Bcu130-cp313-cp313t-manylinux_2_28_x86_64.whl" },
-    { url = "https://download.pytorch.org/whl/cu130/torch-2.9.1%2Bcu130-cp313-cp313t-win_amd64.whl" },
-    { url = "https://download.pytorch.org/whl/cu130/torch-2.9.1%2Bcu130-cp314-cp314-manylinux_2_28_aarch64.whl" },
-    { url = "https://download.pytorch.org/whl/cu130/torch-2.9.1%2Bcu130-cp314-cp314-manylinux_2_28_x86_64.whl" },
-    { url = "https://download.pytorch.org/whl/cu130/torch-2.9.1%2Bcu130-cp314-cp314-win_amd64.whl" },
-    { url = "https://download.pytorch.org/whl/cu130/torch-2.9.1%2Bcu130-cp314-cp314t-manylinux_2_28_aarch64.whl" },
-    { url = "https://download.pytorch.org/whl/cu130/torch-2.9.1%2Bcu130-cp314-cp314t-manylinux_2_28_x86_64.whl" },
-    { url = "https://download.pytorch.org/whl/cu130/torch-2.9.1%2Bcu130-cp314-cp314t-win_amd64.whl" },
+    { url = "https://download.pytorch.org/whl/cu130/torch-2.9.1%2Bcu130-cp311-cp311-manylinux_2_28_aarch64.whl", hash = "sha256:fd6c7d297e21758a7fa07624f2b5bb15607ee3b1dcc52519e8e796c6d4fcf960" },
+    { url = "https://download.pytorch.org/whl/cu130/torch-2.9.1%2Bcu130-cp311-cp311-manylinux_2_28_x86_64.whl", hash = "sha256:f40778951ca1533dc634b3842392641fa0b641181ff2f71d62728ef33cc36a5c" },
+    { url = "https://download.pytorch.org/whl/cu130/torch-2.9.1%2Bcu130-cp311-cp311-win_amd64.whl", hash = "sha256:8db2814e63f2b365bda88526587ca75a6083a0b957a24b2b0d45ddc5ee350176" },
+    { url = "https://download.pytorch.org/whl/cu130/torch-2.9.1%2Bcu130-cp312-cp312-manylinux_2_28_aarch64.whl", hash = "sha256:6e7f84cb10c7e7d9f862c318f056d64840544ab4f0bcbf8cf7ed6047fe04051f" },
+    { url = "https://download.pytorch.org/whl/cu130/torch-2.9.1%2Bcu130-cp312-cp312-manylinux_2_28_x86_64.whl", hash = "sha256:e70e1b18881e6b3c1ce402d0a989da39f956a3a057526e03c354df23d704ce9b" },
+    { url = "https://download.pytorch.org/whl/cu130/torch-2.9.1%2Bcu130-cp312-cp312-win_amd64.whl", hash = "sha256:cd3232a562ad2a2699d48130255e1b24c07dfe694a40dcd24fad683c752de121" },
+    { url = "https://download.pytorch.org/whl/cu130/torch-2.9.1%2Bcu130-cp313-cp313-manylinux_2_28_aarch64.whl", hash = "sha256:32b47b951a9f4e8dc7e132bc2e2f60ac6dd236c5786c07320185bc5062ce5b92" },
+    { url = "https://download.pytorch.org/whl/cu130/torch-2.9.1%2Bcu130-cp313-cp313-manylinux_2_28_x86_64.whl", hash = "sha256:bdec3d5e26a472d292ec48d9d56e3feda86f3e60744cb49c92603502ba34d331" },
+    { url = "https://download.pytorch.org/whl/cu130/torch-2.9.1%2Bcu130-cp313-cp313-win_amd64.whl", hash = "sha256:47cae56331fdec7f7082aad967b25868cc5f94b203fc273e40346a852aa009dd" },
+    { url = "https://download.pytorch.org/whl/cu130/torch-2.9.1%2Bcu130-cp313-cp313t-manylinux_2_28_aarch64.whl", hash = "sha256:4444e1e23b083e3dc0591e53d3a3f7ba45500a6e24071ffc8df2dc319cbd6302" },
+    { url = "https://download.pytorch.org/whl/cu130/torch-2.9.1%2Bcu130-cp313-cp313t-manylinux_2_28_x86_64.whl", hash = "sha256:5270e343fc4b1d21308a30656ea922a23d85f3afbf12abd2481672fa94953fd6" },
+    { url = "https://download.pytorch.org/whl/cu130/torch-2.9.1%2Bcu130-cp313-cp313t-win_amd64.whl", hash = "sha256:c0bb31481c3f505cb5baa630f2b975f07f77be557bbafe5cfc695ac911ea325c" },
+    { url = "https://download.pytorch.org/whl/cu130/torch-2.9.1%2Bcu130-cp314-cp314-manylinux_2_28_aarch64.whl", hash = "sha256:3951834ec2f6daf67e33c940a341dcde7173629202b7e72f247f42621ce088bc" },
+    { url = "https://download.pytorch.org/whl/cu130/torch-2.9.1%2Bcu130-cp314-cp314-manylinux_2_28_x86_64.whl", hash = "sha256:59a98c01784f7b795ac3532513199ac54e3464ccc0f1dda44c940cc0afb426f8" },
+    { url = "https://download.pytorch.org/whl/cu130/torch-2.9.1%2Bcu130-cp314-cp314-win_amd64.whl", hash = "sha256:a80fe3b0467b6986741f28e88fcff0054a6a806616946f28f5f601bd95632ba0" },
+    { url = "https://download.pytorch.org/whl/cu130/torch-2.9.1%2Bcu130-cp314-cp314t-manylinux_2_28_aarch64.whl", hash = "sha256:a7b6c5c619d0ecf0613668d54aaea4d9fea0ef72bcd325b13e1ea64a43bf6775" },
+    { url = "https://download.pytorch.org/whl/cu130/torch-2.9.1%2Bcu130-cp314-cp314t-manylinux_2_28_x86_64.whl", hash = "sha256:f760a8ae4a6cff10f29db09e4ab372e4b8d1f704daf07b4ac39f6f590decc05c" },
+    { url = "https://download.pytorch.org/whl/cu130/torch-2.9.1%2Bcu130-cp314-cp314t-win_amd64.whl", hash = "sha256:59c74f9d2b49778b146f23bcfebc35f051d64f10ff0dbdfd22387a7bd1d9ed71" },
 ]
 
 [[package]]

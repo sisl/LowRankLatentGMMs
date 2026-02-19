@@ -47,7 +47,7 @@ def build_argparse():
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset", type=str, default="fashion", choices=["fashion", "cifar10", "celeba"])
     parser.add_argument("--base", type=str, default="Normal", choices=["Normal", "MPPCA"])
-    parser.add_argument("--flow", type=str, default="CFM", choices=["OTCFM", "VPCFM"])
+    parser.add_argument("--flow", type=str, default="VPCFM", choices=["OTCFM", "VPCFM"])
     parser.add_argument("--n_factors", type=int, default=None)
     parser.add_argument("--epochs", type=int, default=100)
     parser.add_argument("--patience", type=int, default=100)
