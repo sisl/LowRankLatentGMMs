@@ -46,7 +46,7 @@ from datasets.image import ImageDataset
 def build_argparse():
     """Create the shared argument parser for training options."""
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset", type=str, default="fashion", choices=["fashion", "cifar10", "celeba"])
+    parser.add_argument("--dataset", type=str, default="fashion", choices=["fashion", "cifar10", "celeba", "celeba-64x64", "celeba-128x128"])
     parser.add_argument("--base", type=str, default="Normal", choices=["Normal", "MPPCA"])
     parser.add_argument("--flow", type=str, default="VPCFM", choices=["OTCFM", "VPCFM"])
     parser.add_argument("--n_factors", type=int, default=None)
