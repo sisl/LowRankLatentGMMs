@@ -69,8 +69,10 @@ run_with_retry() {
         attempt=$((attempt + 1))
         local log_file="$LOG_DIR/$(printf '%02d' "$idx")-attempt${attempt}.log"
         log_msg "START" "cmd #$idx attempt $attempt: $full_cmd" | tee -a "$log_file"
-        bash -lc "$full_cmd" >>"$log_file" 2>&1
-        rc=$?
+        {
+            bash -lc "$full_cmd"
+        } 2>&1 | tee -a "$log_file"
+        rc=${PIPESTATUS[0]}
         if [[ $rc -eq 0 ]]; then
             log_msg "OK" "cmd #$idx succeeded on attempt $attempt" | tee -a "$log_file"
             return 0
