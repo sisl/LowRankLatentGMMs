@@ -24,7 +24,7 @@ class ImageDataset:
 
     def get_transforms(self):
         # image transformations before fitting MPPCA model
-        if self.dataset == "celeba":
+        if "celeba" in self.dataset:
             mean = torch.tensor([0.5, 0.5, 0.5])
             std = torch.tensor([0.5, 0.5, 0.5])
             mppca_transforms = transforms.Compose([
@@ -34,7 +34,7 @@ class ImageDataset:
                 transforms.Normalize(mean, std),
                 ReshapeTransform([-1])
             ])
-        elif self.dataset == "cifar10":
+        elif "cifar10" in self.dataset:
             mean = torch.tensor([0.5, 0.5, 0.5])
             std = torch.tensor([0.5, 0.5, 0.5])
             mppca_transforms = transforms.Compose([
@@ -43,7 +43,7 @@ class ImageDataset:
                 transforms.Normalize(mean, std),
                 ReshapeTransform([-1])
             ])
-        elif self.dataset == "fashion":
+        elif "fashion" in self.dataset:
             mean = torch.tensor([0.0, 0.0, 0.0])
             std = torch.tensor([1.0, 1.0, 1.0])
             mppca_transforms = transforms.Compose([
@@ -60,21 +60,24 @@ class ImageDataset:
 
 
     def get_mppca_dataset(self):
-        if self.dataset == "celeba":
+        # we check this way because there maybe a series
+        # of different "celeba-*"s which scales based on
+        # how much we want to upscale the images
+        if "celeba" in self.dataset:
             dataset = CelebA(
                 root=self.root_dir,
                 split="train",
                 transform=self.mppca_transforms,
                 download=True
             )
-        elif self.dataset == "cifar10":
+        elif "cifar10" in self.dataset:
             dataset = CIFAR10(
                 root=self.root_dir,
                 train=True,
                 transform=self.mppca_transforms,
                 download=True
             )
-        elif self.dataset == "fashion":
+        elif "fashion" in self.dataset:
             dataset = FashionMNIST(
                 root=self.root_dir,
                 train=True,
@@ -89,14 +92,14 @@ class ImageDataset:
     def get_dataloaders(self, batch_size):
         cfm_transforms = transforms.Compose(self.mppca_transforms.transforms[:-1])
 
-        if self.dataset == "celeba":
+        if "celeba" in self.dataset:
             train_dataset = CelebA(root=self.root_dir, split="train",
                 transform=cfm_transforms, download=True)
             val_dataset = CelebA(root=self.root_dir, split="valid",
                 transform=cfm_transforms, download=True)  
             test_dataset = CelebA(root=self.root_dir, split="test",
                 transform=cfm_transforms, download=True)  
-        elif self.dataset == "cifar10":
+        elif "cifar10" in self.dataset:
             temp_dataset = CIFAR10(root=self.root_dir, train=True,
                 transform=cfm_transforms, download=True
             )
@@ -108,7 +111,7 @@ class ImageDataset:
             test_dataset = CIFAR10(root=self.root_dir, train=False,
                 transform=cfm_transforms, download=True
             )
-        elif self.dataset == "fashion":
+        elif "fashion" in self.dataset:
             temp_dataset = FashionMNIST(root=self.root_dir, train=True,
                 transform=cfm_transforms, download=True
             )

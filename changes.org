@@ -1,0 +1,8 @@
+* Parameter changes
+
+| dataset key    | n_components | n_factors | em_iters | EM batch size |
+|----------------+--------------+-----------+----------+---------------|
+| celeba         |           50 |        10 |       10 |          4800 |
+| celeba-64x64   |           64 |        16 |       16 |          2400 |
+| celeba-128x128 |          128 |        32 |       32 |          1000 |
+

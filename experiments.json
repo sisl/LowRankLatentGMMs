@@ -26,13 +26,37 @@
         "learning_rate":    5e-4,
         "hidden_units":     128
     },
+    "celeba-128x128": {
+        "image_shape":      [128, 128, 3],
+        "n_components":     128,
+        "n_factors":        32,
+        "em_iters":         32,
+        "batch_size":       128,
+        "em_batch_size":    1000,
+        "learning_rate":    2e-4,
+        "num_channels":     64,
+        "num_res_blocks":   2,
+        "channel_mult":     [1, 2, 2, 2]
+    },
+    "celeba-64x64": {
+        "image_shape":      [64, 64, 3],
+        "n_components":     64,
+        "n_factors":        16,
+        "em_iters":         16,
+        "batch_size":       128,
+        "em_batch_size":    2400,
+        "learning_rate":    2e-4,
+        "num_channels":     64,
+        "num_res_blocks":   2,
+        "channel_mult":     [1, 2, 2, 2]
+    },
     "celeba": {
         "image_shape":      [32, 32, 3],
         "n_components":     50,
         "n_factors":        10,
         "em_iters":         10,
         "batch_size":       128,
-        "em_batch_size":    1000,
+        "em_batch_size":    4800,
         "learning_rate":    2e-4,
         "num_channels":     64,
         "num_res_blocks":   2,
