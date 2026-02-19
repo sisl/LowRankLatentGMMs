@@ -13,6 +13,7 @@ import numpy as np
 import os
 import time
 import torch
+from pytorch_fid.fid_score import calculate_frechet_distance
 from torch.distributions import MultivariateNormal
 from torch.nn.utils import clip_grad_norm_
 from torch.optim.lr_scheduler import LambdaLR
@@ -196,8 +197,13 @@ def compute_loss(x0, x1, flow_matcher, model):
     return loss
 
 
-def save_metrics(dir, NDBs, NFEs, base_fit_times, flow_train_times):
+def save_metrics(dir, NDBs, NFEs, base_fit_times, flow_train_times, fid=None):
     metrics = {}
+
+    # we program defensively here in case some other API is using this
+    # and thus skip FIDs if not provided
+    if fid is not None:
+        metrics["FIDs"] = np.array(fid).tolist()
     metrics['NDB/C'] = np.array(NDBs).tolist()
     metrics['NFEs'] = np.array(NFEs).tolist()
     metrics['base fit times'] = np.array(base_fit_times).tolist()
@@ -256,6 +262,7 @@ def main(opt):
 
     datalooper = infiniteloop(train_loader)
 
+    FIDs = torch.zeros(opt.n_trials)
     NDBs = torch.zeros(opt.n_trials)
     NFEs = torch.zeros(opt.n_trials)
     base_fit_times = torch.zeros(opt.n_trials)
@@ -411,6 +418,14 @@ def main(opt):
 
         model_samples = model_samples.reshape((N, -1))
 
+        # Calculate sample wide Frechet Distance
+        mu1 = np.mean(test_data.cpu().numpy(), axis=0)
+        sigma1 = np.cov(test_data.cpu().numpy(), rowvar=False)
+        mu2 = np.mean(model_samples.cpu().numpy(), axis=0)
+        sigma2 = np.cov(model_samples.cpu().numpy(), rowvar=False)
+        fid = calculate_frechet_distance(mu1, sigma1, mu2, sigma2)
+        FIDs[trial] = fid
+
         # compute NDB
         ndb_evaluator = NDB(training_data=test_data, number_of_bins=n_bins, significance_level=0.05, whitening=False)
         results = ndb_evaluator.evaluate(model_samples, 'Validation')
@@ -441,7 +456,7 @@ def main(opt):
         base_fit_times[trial] = base_fit_time
         flow_train_times[trial] = flow_train_time
 
-        save_metrics(opt.run_dir, NDBs, NFEs, base_fit_times, flow_train_times)
+        save_metrics(opt.run_dir, NDBs, NFEs, base_fit_times, flow_train_times, FIDs)
         time.sleep(2)
 
 
