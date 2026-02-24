@@ -28,9 +28,9 @@
     },
     "celeba-128x128": {
         "image_shape":      [128, 128, 3],
-        "n_components":     128,
-        "n_factors":        32,
-        "em_iters":         32,
+        "n_components":     64,
+        "n_factors":        16,
+        "em_iters":         16,
         "batch_size":       128,
         "em_batch_size":    1000,
         "learning_rate":    2e-4,

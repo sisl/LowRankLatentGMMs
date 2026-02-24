@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# set parallelism using PARALLEL_JOBS env var or first positional arg (default=2)
+# set parallelism using PARALLEL_JOBS env var or first positional arg (default=1)
 # configure retries using RETRIES env var (default=1)
 # configure sleep between retries using SLEEP_BETWEEN_RETRIES env var (default=5)
 # edit COMMANDS array below to define the jobs
@@ -9,7 +9,7 @@ set -u
 
 # -------- configuration --------
 PYTHON=${PYTHON:-"uv run python"}      # override to use plain python, etc.
-JOBS=${1:-${PARALLEL_JOBS:-2}}          # parallel workers (positional arg wins, then env)
+JOBS=${1:-${PARALLEL_JOBS:-1}}          # parallel workers (positional arg wins, then env)
 RETRIES=${RETRIES:-1}                  # number of retries per command (0 = no retry)
 SLEEP_BETWEEN_RETRIES=${SLEEP_BETWEEN_RETRIES:-5}
 LOG_ROOT=${LOG_ROOT:-logs/train_more}
