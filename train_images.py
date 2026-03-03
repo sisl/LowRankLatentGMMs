@@ -13,7 +13,7 @@ import numpy as np
 import os
 import time
 import torch
-from pytorch_fid.fid_score import calculate_frechet_distance
+from pytorch_fid.fid_score import calculate_frechet_distance, InceptionV3
 from torch.distributions import MultivariateNormal
 from torch.nn.utils import clip_grad_norm_
 from torch.optim.lr_scheduler import LambdaLR
@@ -418,11 +418,32 @@ def main(opt):
 
         model_samples = model_samples.reshape((N, -1))
 
-        # Calculate sample wide Frechet Distance
-        mu1 = np.mean(test_data.cpu().numpy(), axis=0)
-        sigma1 = np.cov(test_data.cpu().numpy(), rowvar=False)
-        mu2 = np.mean(model_samples.cpu().numpy(), axis=0)
-        sigma2 = np.cov(model_samples.cpu().numpy(), rowvar=False)
+        # compute FID
+        block_idx = InceptionV3.BLOCK_INDEX_BY_DIM[2048]
+        fid_model = InceptionV3([block_idx]).to(device)
+        fid_model.eval()
+
+        # Reshape and denormalize from normalized tensors to [0, 1] range for InceptionV3
+        test_images = (test_data.reshape(N, opt.image_shape[-1], opt.image_shape[0], opt.image_shape[1])
+                       * transform_std[:, None, None] + transform_mean[:, None, None]).clip(0, 1)
+        gen_images = (model_samples.reshape(N, opt.image_shape[-1], opt.image_shape[0], opt.image_shape[1])
+                      * transform_std[:, None, None] + transform_mean[:, None, None]).clip(0, 1)
+
+        # Compute InceptionV3 activations in batches
+        acts_real, acts_gen = [], []
+        for i in range(0, N, opt.batch_size):
+            with torch.no_grad():
+                real_batch = test_images[i:i+opt.batch_size].to(device)
+                gen_batch = gen_images[i:i+opt.batch_size].to(device)
+                acts_real.append(fid_model(real_batch)[0].squeeze(-1).squeeze(-1).cpu().numpy())
+                acts_gen.append(fid_model(gen_batch)[0].squeeze(-1).squeeze(-1).cpu().numpy())
+
+        acts_real = np.concatenate(acts_real, axis=0)
+        acts_gen = np.concatenate(acts_gen, axis=0)
+        mu1 = np.mean(acts_real, axis=0)
+        sigma1 = np.cov(acts_real, rowvar=False)
+        mu2 = np.mean(acts_gen, axis=0)
+        sigma2 = np.cov(acts_gen, rowvar=False)
         fid = calculate_frechet_distance(mu1, sigma1, mu2, sigma2)
         FIDs[trial] = fid
 
