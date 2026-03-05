@@ -176,6 +176,8 @@ def gather_results(runs_dir: Path) -> dict:
     results = {}
     for results_file in sorted(runs_dir.rglob("results.json")):
         key = str(results_file.parent.relative_to(runs_dir))
+        if "/" not in key:
+            continue
         with open(results_file) as f:
             results[key] = json.load(f)
     return results
@@ -224,77 +226,105 @@ def fmt_metric(m, s, best, prec=1):
         return "---"
     is_best = abs(m - best) < 1e-6
     if is_best:
-        return f"\\textbf{{{m:.{prec}f}}}$\\pm${s:.{prec}f}"
-    return f"{m:.{prec}f}$\\pm${s:.{prec}f}"
+        return f"\\bfseries {m:.{prec}f} \\pm {s:.{prec}f}"
+    return f"{m:.{prec}f} \\pm {s:.{prec}f}"
 
 
 def main_table(all_entries):
     """Table 1: Main comparison across datasets.
 
-    For each dataset, show OTCFM/VPCFM x MPPCA/Normal at the canonical K.
+    For each dataset, show VPCFM/OTCFM x MPPCA/Normal at the canonical L.
     """
-    dataset_display = {
-        "fashion": "Fashion-MNIST",
-        "celeba": "CelebA",
-        "celeba-64x64": r"CelebA-64$\times$64",
+    dataset_info = {
+        "fashion":      {"cmd": r"\fashion{}",  "dims": r"28 \times 28 \times 1", "epochs": 100},
+        "cifar10":      {"cmd": r"\cifar{}",    "dims": r"32 \times 32 \times 3", "epochs": 100},
+        "celeba":       {"cmd": r"\celeba{}",  "dims": r"32 \times 32 \times 3", "epochs": 50},
+        "celeba-64x64": {"cmd": r"\celeba{}", "dims": r"64 \times 64 \times 3", "epochs": 50},
     }
-    dataset_order = ["fashion", "celeba", "celeba-64x64"]
-    # Canonical K per dataset
-    canonical_k = {"fashion": 6, "celeba": 10, "celeba-64x64": 16}
+    dataset_order = ["fashion", "cifar10", "celeba", "celeba-64x64"]
+    # Canonical L per dataset
+    canonical_l = {"fashion": 6, "cifar10": 10, "celeba": 10, "celeba-64x64": 16}
+
+    # Model display name: VP-MPPCA, OT-MPPCA, VP-Normal, OT-Normal
+    def model_name(e):
+        prefix = "VP" if e["flow"] == "VPCFM" else "OT"
+        return f"{prefix}-{e['base']}"
+
+    # Sort: VP-MPPCA, OT-MPPCA, VP-Normal, OT-Normal
+    def sort_key(e):
+        return (0 if e["base"] == "MPPCA" else 1,
+                0 if e["flow"] == "VPCFM" else 1)
 
     lines = []
-    lines.append(r"\begin{table}[t]")
+    lines.append(r"\begin{table*}[t]")
     lines.append(r"\centering")
-    lines.append(r"\caption{Comparison of flow matching methods across datasets. Best results per dataset are in \textbf{bold}.}")
-    lines.append(r"\label{tab:main}")
-    lines.append(r"\resizebox{\textwidth}{!}{%")
-    lines.append(r"\begin{tabular}{ll l r c ccc}")
-    lines.append(r"\toprule")
-    lines.append(r" & & & & \multicolumn{1}{c}{\textbf{Training}} & \multicolumn{3}{c}{\textbf{Testing}} \\")
-    lines.append(r"\cmidrule(lr){5-5} \cmidrule(lr){6-8}")
-    lines.append(r"Dataset & Flow & Base & $K$ & Time (min) & NDB/C $\downarrow$ & NFE $\downarrow$ & FID $\downarrow$ \\")
-    lines.append(r"\midrule")
+    lines.append(r"\caption{Generative modeling results on image datasets.}")
+    lines.append(r"\label{tab:images}")
+    lines.append(r"\small")
+    lines.append(r"    \begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}")
+    lines.append(r"        c")
+    lines.append(r"        l")
+    lines.append(r"        r")
+    lines.append(r"        S[table-format=3.1(1.1)]")
+    lines.append(r"        S[table-format=2.2(1.2)]")
+    lines.append(r"        S[table-format=3.1(1.1)]")
+    lines.append(r"        S[table-format=3.1(1.1)]")
+    lines.append(r"    @{}}")
+    lines.append(r"    \toprule")
+    lines.append(r"     \multirow{2}{*}{\vspace{-5pt}Dataset} & \multirow{2}{*}{\vspace{-5pt}Model} & \multicolumn{2}{c}{Training} & \multicolumn{3}{c}{Testing} \\")
+    lines.append(r"    \cmidrule(lr){3-4} \cmidrule(lr){5-7}")
+    lines.append(r"     &   & {epochs} & {time (min)} & {NDB/$C$} & {NFE} & {FID}\\")
+    lines.append(r"    \midrule")
 
-    for di, ds in enumerate(dataset_order):
-        k = canonical_k[ds]
-        entries = [e for e in all_entries if e["ds"] == ds and e["factors"] == k]
+    active_datasets = [ds for ds in dataset_order
+                       if any(e["ds"] == ds and e["factors"] == canonical_l[ds]
+                              for e in all_entries)]
 
-        # Sort: OTCFM before VPCFM, MPPCA before Normal
-        def sort_key(e):
-            return (0 if e["flow"] == "OTCFM" else 1,
-                    0 if e["base"] == "MPPCA" else 1)
+    for di, ds in enumerate(active_datasets):
+        info = dataset_info[ds]
+        l = canonical_l[ds]
+        entries = [e for e in all_entries if e["ds"] == ds and e["factors"] == l]
         entries.sort(key=sort_key)
 
-        best_fid = min(e["fid_m"] for e in entries)
         best_ndb = min(e["ndb_m"] for e in entries)
         best_nfe = min(e["nfe_m"] for e in entries)
-        best_time = min(e["time_m"] for e in entries)
+        best_fid = min(e["fid_m"] for e in entries)
 
-        ds_label = dataset_display[ds]
+        n = len(entries)
+        ds_label = (
+            f"\\multirow{{{n}}}{{*}}"
+            f"{{\\shortstack[*]{{\\textbf{{{info['cmd']}}}\\\\$[{info['dims']}]$}}}}"
+        )
 
         for i, e in enumerate(entries):
-            row_ds = ds_label if i == 0 else ""
-            fid_str = fmt_metric(e["fid_m"], e["fid_s"], best_fid, 1)
             ndb_str = fmt_metric(e["ndb_m"], e["ndb_s"], best_ndb, 2)
             nfe_str = fmt_metric(e["nfe_m"], e["nfe_s"], best_nfe, 1)
-            time_str = fmt_metric(e["time_m"], e["time_s"], best_time, 1)
+            fid_str = fmt_metric(e["fid_m"], e["fid_s"], best_fid, 1)
+            time_str = f"{e['time_m']:.1f} \\pm {e['time_s']:.1f}"
 
-            lines.append(
-                f"  {row_ds} & {e['flow']} & {e['base']} & ${e['factors']}$ "
-                f"& {time_str} & {ndb_str} & {nfe_str} & {fid_str} \\\\"
+            row = (
+                f"        & {model_name(e)}  "
+                f"& {info['epochs']}   "
+                f"& {time_str} "
+                f"& {ndb_str} "
+                f"& {nfe_str} "
+                f"& {fid_str} \\\\"
             )
+            if i == 0:
+                lines.append(f"    {ds_label}")
+            lines.append(row)
 
-        if di < len(dataset_order) - 1:
-            lines.append(r"\midrule")
+        if di < len(active_datasets) - 1:
+            lines.append(r"    \midrule")
 
-    lines.append(r"\bottomrule")
-    lines.append(r"\end{tabular}}")
-    lines.append(r"\end{table}")
+    lines.append(r"    \bottomrule")
+    lines.append(r"    \end{tabular*}")
+    lines.append(r"\end{table*}%")
     return "\n".join(lines)
 
 
 def sweep_table(all_entries):
-    """Table 2: Fashion-MNIST VPCFM-MPPCA K sweep, with OTCFM-MPPCA baseline."""
+    """Table 2: Fashion-MNIST VPCFM-MPPCA L sweep, with OTCFM-MPPCA baseline."""
     sweep = [e for e in all_entries
              if e["ds"] == "fashion" and e["base"] == "MPPCA"]
 
@@ -311,13 +341,13 @@ def sweep_table(all_entries):
     lines = []
     lines.append(r"\begin{table}[t]")
     lines.append(r"\centering")
-    lines.append(r"\caption{Effect of the number of MPPCA components $K$ on Fashion-MNIST. Best results in \textbf{bold}.}")
+    lines.append(r"\caption{Effect of the number of MPPCA components $L$ on Fashion-MNIST. Best results in \textbf{bold}.}")
     lines.append(r"\label{tab:sweep}")
     lines.append(r"\begin{tabular}{ll r c ccc}")
     lines.append(r"\toprule")
     lines.append(r" & & & \multicolumn{1}{c}{\textbf{Training}} & \multicolumn{3}{c}{\textbf{Testing}} \\")
     lines.append(r"\cmidrule(lr){4-4} \cmidrule(lr){5-7}")
-    lines.append(r"Flow & Base & $K$ & Time (min) & NDB/C $\downarrow$ & NFE $\downarrow$ & FID $\downarrow$ \\")
+    lines.append(r"Flow & Base & $L$ & Time (min) & NDB/C $\downarrow$ & NFE $\downarrow$ & FID $\downarrow$ \\")
     lines.append(r"\midrule")
 
     wrote_vpcfm = False
@@ -341,7 +371,8 @@ def sweep_table(all_entries):
     lines.append(r"\end{table}")
     return "\n".join(lines)
 
-def plot_swep(all_entries, path: str = "sweep.pdf"):
+def plot_sweep(all_entries, path: str = "sweep"):
+    """Three separate sweep plots: NFE, NDB/C, FID vs L for Fashion-MNIST."""
     import matplotlib.pyplot as plt
     apply_theme()
 
@@ -350,30 +381,30 @@ def plot_swep(all_entries, path: str = "sweep.pdf"):
         if e["ds"] == "fashion" and e["base"] == "MPPCA" and e["flow"] == "VPCFM"
     ]).sort_values("factors")
 
-    fig, axes = plt.subplots(2, 2, figsize=(7, 5))
-    apply_theme(axes=axes)
-    (ax_kfid, ax_kndb), (ax_tfid, ax_tndb) = axes
+    stem = Path(path).stem
+    suffix = Path(path).suffix or ".pdf"
+    parent = Path(path).parent
 
     panels = [
-        (ax_kfid, "factors", "fid_m",  "fid_s",  "Factors ($K$)",       "FID $\\downarrow$"),
-        (ax_kndb, "factors", "ndb_m",  "ndb_s",  "Factors ($K$)",       "NDB/C $\\downarrow$"),
-        (ax_tfid, "time_m",  "fid_m",  "fid_s",  "Train time (min)",    "FID $\\downarrow$"),
-        (ax_tndb, "time_m",  "ndb_m",  "ndb_s",  "Train time (min)",    "NDB/C $\\downarrow$"),
+        ("nfe_m",  "nfe_s",  "NFE",        f"{stem}_nfe{suffix}",  TEAL),
+        ("ndb_m",  "ndb_s",  "NDB/$C$",    f"{stem}_ndb{suffix}", ORANGE),
+        ("fid_m",  "fid_s",  "FID",        f"{stem}_fid{suffix}", GREEN),
     ]
 
-    for ax, xk, yk, sk, xlabel, ylabel in panels:
-        ordered = sweep.sort_values(xk)
-        x = ordered[xk].values
-        y = ordered[yk].values
-        s = ordered[sk].values
-        ax.plot(x, y, marker="o", color=TEAL)
-        ax.fill_between(x, y - s, y + s, alpha=0.18, color=TEAL, linewidth=0)
-        ax.set_xlabel(xlabel)
+    for yk, sk, ylabel, fname, color in panels:
+        fig, ax = plt.subplots(1, 1, figsize=(4.0, 2.2))
+        x = sweep["factors"].values
+        y = sweep[yk].values
+        s = sweep[sk].values
+        ax.plot(x, y, marker="o", color=color)
+        ax.fill_between(x, y - s, y + s, alpha=0.18, color=color, linewidth=0)
+        ax.set_xlabel("$\\ell$")
         ax.set_ylabel(ylabel)
-
-    fig.tight_layout()
-    fig.savefig(path)
-    print(f"Saved sweep plot to {path}")
+        fig.tight_layout()
+        out = parent / fname
+        fig.savefig(out)
+        plt.close(fig)
+        print(f"Saved {out}")
 
 def main():
     parser = argparse.ArgumentParser(description="Gather results.json files from a runs directory.")
@@ -410,7 +441,7 @@ def main():
         print(f"Wrote sweep table to {args.sweep_latex}")
 
     if args.plot:
-        plot_swep(all_entries, path=args.plot)
+        plot_sweep(all_entries, path=args.plot)
 
 
 if __name__ == "__main__":
